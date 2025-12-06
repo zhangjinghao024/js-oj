@@ -5,6 +5,7 @@ import ProblemList from './components/ProblemList';
 import ProblemDetail from './components/ProblemDetail';
 import CodeEditor from './components/CodeEditor';
 import TestResult from './components/TestResult';
+import QuizPage from './pages/QuizPage';
 import './App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
     updateProblemRecord
   } = useJudgeStore();
 
+  const [currentPage, setCurrentPage] = useState('coding'); // 'coding' 或 'quiz'
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,73 +147,97 @@ function App() {
 
   return (
       <div className="app">
+        {/* 导航栏 - 始终显示 */}
         <header className="app-header">
-          <h1>JavaScript 手写题判题系统</h1>
+          <div className="header-content">
+            <h1>JavaScript 在线练习系统</h1>
+            <nav className="header-nav">
+              <button
+                  className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
+                  onClick={() => setCurrentPage('coding')}
+              >
+                💻 手写题
+              </button>
+              <button
+                  className={`nav-btn ${currentPage === 'quiz' ? 'active' : ''}`}
+                  onClick={() => setCurrentPage('quiz')}
+              >
+                📝 问答题
+              </button>
+            </nav>
+          </div>
           {error && <div className="error-banner">{error}</div>}
         </header>
 
-        <div className="app-container">
-          {/* 左侧: 题目列表 */}
-          <aside className="sidebar">
-            <ProblemList />
-          </aside>
+        {/* 根据当前页面渲染不同内容 */}
+        {currentPage === 'quiz' ? (
+            // 问答题页面
+            <QuizPage />
+        ) : (
+            // 手写题页面
+            <div className="app-container">
+              {/* 左侧: 题目列表 */}
+              <aside className="sidebar">
+                <ProblemList />
+              </aside>
 
-          {/* 中间: 题目详情和代码编辑器 */}
-          <main className="main-content">
-            <div className="content-tabs">
-              <button
-                  className={`tab-button ${activeTab === 'description' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('description')}
-              >
-                题目描述
-              </button>
-              <button
-                  className={`tab-button ${activeTab === 'result' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('result')}
-              >
-                测试结果
-              </button>
-            </div>
-
-            <div className="tab-content">
-              {activeTab === 'description' ? (
-                  <ProblemDetail />
-              ) : (
-                  <TestResult />
-              )}
-            </div>
-
-            <div className="editor-section">
-              <div className="editor-header">
-                <h3>代码编辑器</h3>
-                <div className="editor-actions">
-                  <button className="btn btn-secondary" onClick={handleReset}>
-                    重置
+              {/* 中间: 题目详情和代码编辑器 */}
+              <main className="main-content">
+                <div className="content-tabs">
+                  <button
+                      className={`tab-button ${activeTab === 'description' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('description')}
+                  >
+                    题目描述
                   </button>
                   <button
-                      className="btn btn-primary"
-                      onClick={handleRunCode}
-                      title="运行示例测试用例"
+                      className={`tab-button ${activeTab === 'result' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('result')}
                   >
-                    运行示例
-                  </button>
-                  <button
-                      className="btn btn-success"
-                      onClick={handleSubmit}
-                      title="提交代码给 AI 分析"
-                  >
-                    🤖 AI 分析
+                    测试结果
                   </button>
                 </div>
-              </div>
-              <CodeEditor
-                  value={userCode}
-                  onChange={(value) => setUserCode(value || '')}
-                  height="400px"
-              />
+
+                <div className="tab-content">
+                  {activeTab === 'description' ? (
+                      <ProblemDetail />
+                  ) : (
+                      <TestResult />
+                  )}
+                </div>
+
+                <div className="editor-section">
+                  <div className="editor-header">
+                    <h3>代码编辑器</h3>
+                    <div className="editor-actions">
+                      <button className="btn btn-secondary" onClick={handleReset}>
+                        重置
+                      </button>
+                      <button
+                          className="btn btn-primary"
+                          onClick={handleRunCode}
+                          title="运行示例测试用例"
+                      >
+                        运行示例
+                      </button>
+                      <button
+                          className="btn btn-success"
+                          onClick={handleSubmit}
+                          title="提交代码给 AI 分析"
+                      >
+                        🤖 AI 分析
+                      </button>
+                    </div>
+                  </div>
+                  <CodeEditor
+                      value={userCode}
+                      onChange={(value) => setUserCode(value || '')}
+                      height="400px"
+                  />
+                </div>
+              </main>
             </div>
-          </main>
-        </div>
+        )}
       </div>
   );
 }

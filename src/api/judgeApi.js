@@ -95,4 +95,35 @@ export const fullJudge = async (problemId, code) => {
   return response.data;
 };
 
+// ========== 问答题相关 API ==========
+
+// 获取问答题列表
+export const fetchQuizzes = async () => {
+  const response = await api.get('/quizzes');
+  return response.data;
+};
+
+// 获取单个问答题详情
+export const fetchQuizDetail = async (quizId) => {
+  const response = await api.get(`/quizzes/${quizId}`);
+  return response.data;
+};
+
+// 提交问答题答案并获取 AI 分析
+export const submitQuizAnswer = async (quizId, userAnswer) => {
+  const response = await api.post('/quizzes/analyze', {
+    quizId,
+    userAnswer
+  });
+  return response.data;
+};
+
+// 语音转文字
+export const speechToText = async (audioData) => {
+  const response = await api.post('/speech-to-text', {
+    audioData
+  });
+  return response.data;
+};
+
 export default api;

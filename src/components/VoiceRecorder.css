@@ -1,0 +1,73 @@
+/* 语音录制组件样式 */
+.voice-recorder {
+    display: inline-block;
+}
+
+.btn-voice {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-voice:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-voice:active {
+    transform: translateY(0);
+}
+
+.btn-voice.recording {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.btn-voice.processing {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.recording-icon {
+    display: inline-block;
+    animation: blink 1s ease-in-out infinite;
+}
+
+/* 录音中的脉冲动画 */
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 6px rgba(245, 87, 108, 0.3);
+    }
+    50% {
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+    }
+}
+
+/* 录音图标闪烁 */
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .btn-voice {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
