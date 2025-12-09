@@ -65,6 +65,62 @@ const mockQuizzesByCategory = {
         },
         {
             id: 'css2',
+            title: 'BFC（块级格式化上下文）',
+            difficulty: 'Medium',
+            category: 'CSS',
+            question: `请说明什么是 BFC（块级格式化上下文），如何触发 BFC，以及 BFC 的应用场景。`,
+            tags: ['BFC', '布局', '格式化上下文'],
+            points: 15,
+            referenceAnswer: `**什么是 BFC：**
+
+BFC（Block Formatting Context，块级格式化上下文）是 Web 页面中一个独立的渲染区域，内部元素的布局不会影响到外部元素。
+
+**如何触发 BFC：**
+
+1. **根元素**：html 元素
+2. **浮动元素**：float 不为 none
+3. **绝对定位元素**：position 为 absolute 或 fixed
+4. **display 属性**：inline-block、table-cell、flex、grid 等
+5. **overflow 属性**：不为 visible（如 hidden、auto、scroll）
+
+**BFC 的特性和应用：**
+
+1. **防止外边距重叠**
+   \`\`\`css
+   .container {
+       overflow: hidden; /* 创建 BFC */
+   }
+   \`\`\`
+
+2. **清除浮动**
+   \`\`\`css
+   .parent {
+       overflow: hidden; /* 包含浮动子元素 */
+   }
+   \`\`\`
+
+3. **防止文字环绕**
+   \`\`\`css
+   .sidebar { float: left; }
+   .content { overflow: hidden; } /* 不被浮动元素覆盖 */
+   \`\`\`
+
+4. **自适应两栏布局**
+   \`\`\`css
+   .left { float: left; width: 200px; }
+   .right { overflow: hidden; } /* 自适应剩余宽度 */
+   \`\`\``,
+            keywords: ['BFC', '格式化上下文', '浮动', 'overflow', '外边距重叠', '清除浮动'],
+            hints: [
+                'BFC 是独立的渲染区域',
+                'overflow: hidden 可以触发',
+                '可用于清除浮动',
+                '防止 margin 重叠',
+                '实现自适应布局'
+            ]
+        },
+        {
+            id: 'css3',
             title: 'Flex 布局',
             difficulty: 'Medium',
             category: 'CSS',
@@ -82,7 +138,346 @@ const mockQuizzesByCategory = {
 2. flex-shrink：缩小比例
 3. flex-basis：默认大小`,
             hints: ['容器属性 vs 项目属性', '主轴和交叉轴']
-        }
+        },
+        {
+            id: 'css4',
+            title: 'CSS 选择器优先级',
+            difficulty: 'Medium',
+            category: 'CSS',
+            question: `请说明 CSS 选择器的优先级规则，以及如何计算优先级。`,
+            tags: ['选择器', '优先级', '权重'],
+            points: 15,
+            referenceAnswer: `**优先级规则（从高到低）：**
+
+1. **!important**：最高优先级
+2. **内联样式**：style 属性（权重 1000）
+3. **ID 选择器**：#id（权重 100）
+4. **类、属性、伪类选择器**：.class、[attr]、:hover（权重 10）
+5. **元素、伪元素选择器**：div、::before（权重 1）
+6. **通配符、子选择器、相邻选择器**：*、>、+（权重 0）
+
+**计算方法：**
+- 统计各类选择器的数量
+- 从左到右比较权重值
+- 权重相同时，后定义的优先
+
+**示例：**
+\`\`\`css
+div.class #id       /* 权重：100 + 10 + 1 = 111 */
+.class1.class2      /* 权重：10 + 10 = 20 */
+div p               /* 权重：1 + 1 = 2 */
+\`\`\``,
+            keywords: ['优先级', '权重', 'important', 'ID选择器', '类选择器'],
+            hints: [
+                '!important 最高',
+                'ID > 类 > 元素',
+                '权重可以累加',
+                '后定义的覆盖先定义的'
+            ]
+        },
+        {
+            id: 'css5',
+            title: 'CSS 清除浮动',
+            difficulty: 'Medium',
+            category: 'CSS',
+            question: `为什么需要清除浮动？请说明浮动导致的问题，并列出至少三种常见的清除浮动方法。`,
+            tags: ['清除浮动', '布局', 'float', 'BFC', 'clearfix'],
+            points: 15,
+            referenceAnswer: `**为什么需要清除浮动？**
+
+浮动元素（float）会脱离标准文档流，导致父元素高度塌陷，使背景、边框无法包裹内容，并对后续布局产生影响。因此需要清除浮动，让父元素重新包含浮动子元素。
+
+---
+
+## **常见清除浮动的方法**
+
+### **1. clearfix（伪元素清除浮动，最推荐）**
+
+\`\`\`css
+.clearfix::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+\`\`\`
+
+**优点：** 兼容性好、不影响布局结构  
+**缺点：** 需要额外的类名  
+
+---
+
+### **2. overflow 触发 BFC**
+
+\`\`\`css
+.container {
+  overflow: auto; /* 或 hidden */
+}
+\`\`\`
+
+**优点：** 简单、无需额外标记  
+**缺点：** overflow 可能隐藏溢出内容或产生滚动条  
+
+---
+
+### **3. display: flow-root（现代方案）**
+
+\`\`\`css
+.container {
+  display: flow-root;
+}
+\`\`\`
+
+**优点：** 最简洁，天然生成 BFC  
+**缺点：** 不支持 IE（但现代浏览器支持良好）
+
+---
+
+### **4. 添加空元素清除浮动（不推荐）**
+
+\`\`\`html
+<div style="clear: both;"></div>
+\`\`\`
+
+**缺点：** 破坏语义、增加无意义 DOM
+
+---
+
+**总结**  
+float 会导致父元素高度塌陷。最推荐的清除方式是 clearfix 或 flow-root，overflow 可用于简单场景，空元素清除方式已不常用。
+`,
+            keywords: ['浮动', '清除浮动', 'clearfix', 'overflow', 'flow-root'],
+            hints: [
+                '浮动会导致父元素高度塌陷',
+                'clearfix 是最常用的解决方案',
+                'overflow 会触发 BFC',
+                'flow-root 是最现代的清除方式'
+            ]
+        },
+        {
+            id: 'css6',
+            title: 'CSS 垂直居中的方案',
+            difficulty: 'Easy',
+            category: 'CSS',
+            question: `常见的垂直居中方案有哪些？请至少列举三种常见的实现方式，并说明各自的优缺点。`,
+            tags: ['垂直居中', '布局', 'flex', 'transform', 'grid'],
+            points: 10,
+            referenceAnswer: `## 常见的垂直居中方案
+
+---
+
+### **1. Flex 垂直居中（最常用）**
+\`\`\`css
+.parent {
+  display: flex;
+  align-items: center;
+}
+\`\`\`
+
+**优点：** 简单、语义清晰、现代浏览器支持好  
+**缺点：** IE9- 不支持
+
+---
+
+### **2. position + transform 垂直居中**
+\`\`\`css
+.child {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+\`\`\`
+
+**优点：** 精准控制位置，不依赖其他属性  
+**缺点：** 父元素必须是定位元素；对响应式布局不如 flex 方便
+
+---
+
+### **3. line-height 垂直居中（仅适用于单行文本）**
+\`\`\`css
+.text {
+  line-height: 200px; /* 等于父容器高度 */
+}
+\`\`\`
+
+**优点：** 简单  
+**缺点：** 只能用于单行文字，无法用于块级元素
+
+---
+
+### **4. Grid 垂直居中（现代方案）**
+\`\`\`css
+.parent {
+  display: grid;
+  place-items: center;
+}
+\`\`\`
+
+**优点：** 最简洁，自动水平 + 垂直居中  
+**缺点：** IE 不支持
+
+---
+
+### **5. table-cell 垂直居中（老旧方案）**
+\`\`\`css
+.parent {
+  display: table-cell;
+  vertical-align: middle;
+}
+\`\`\`
+
+**优点：** 兼容性好（包括 IE）  
+**缺点：** 破坏布局语义，不推荐用于现代项目
+
+---
+
+**总结**  
+Flex 和 Grid 是当前最推荐的垂直居中方案，position+transform 更灵活，line-height 和 table-cell 属于旧方案，用于兼容性场景。
+`,
+            keywords: ['垂直居中', 'flex', 'transform', 'grid', 'line-height'],
+            hints: [
+                'flex 是最常用的方法',
+                'position + transform 不依赖容器的高度',
+                'grid 的 place-items 可以快速居中'
+            ]
+        },
+        {
+            "id": "css7",
+            "title": "CSS 性能优化方法",
+            "difficulty": "Medium",
+            "category": "CSS",
+            "question": "如果要做优化，CSS 提高性能的方法有哪些？请列举并简要说明。",
+            "tags": ["CSS", "性能优化", "关键CSS", "异步加载", "选择器", "重排重绘"],
+            "points": 10,
+            "referenceAnswer": "## CSS 提高性能的主要方法\n\n---\n\n### **1. 内联首屏关键 CSS**\n- 将首屏渲染所需的最小 CSS 内联到 HTML `<head>` 中，使浏览器在解析完 HTML 后即可立即渲染内容。\n- 避免因等待外部 CSS 文件下载而延迟首屏显示。\n- **注意**：仅内联“关键”CSS（通常几百字节到几KB），避免过大影响 HTML 体积和初始拥塞窗口；其余 CSS 仍应外链以利用缓存。\n\n---\n\n### **2. 异步加载非关键 CSS**\n为避免非关键 CSS 阻塞页面渲染，可采用以下方式异步加载：\n\n- **动态插入 `<link>` 标签（通过 JS）**\n  ```js\n  const myCSS = document.createElement(\"link\");\n  myCSS.rel = \"stylesheet\";\n  myCSS.href = \"mystyles.css\";\n  document.head.appendChild(myCSS);\n  ```\n\n- **使用 `media=\"noexist\"` + `onload` 切换**\n  ```html\n  <link rel=\"stylesheet\" href=\"mystyles.css\" media=\"noexist\" onload=\"this.media='all'\">\n  ```\n  浏览器会异步下载该文件，不阻塞渲染，加载完成后启用。\n\n- **使用 `rel=\"alternate stylesheet\"` + `onload` 切换**\n  ```html\n  <link rel=\"alternate stylesheet\" href=\"mystyles.css\" onload=\"this.rel='stylesheet'\">\n  ```\n\n---\n\n### **3. 压缩 CSS 资源**\n- 使用构建工具（如 Webpack、Rollup、Gulp）对 CSS 进行压缩（minify），去除空格、注释、冗余代码，减小文件体积，加快传输速度。\n\n---\n\n### **4. 优化 CSS 选择器**\n- CSS 匹配规则从右向左进行，复杂嵌套会显著降低匹配效率。\n- **建议**：\n  - 避免超过三层的嵌套选择器；\n  - ID 选择器本身已唯一，无需再嵌套；\n  - 尽量少用通配符 `*`、属性选择器 `[type=\"text\"]` 和 `:nth-child` 等低效选择器。\n\n---\n\n### **5. 避免使用昂贵的 CSS 属性**\n- 某些属性（如 `box-shadow`、`border-radius`、`filter`、`opacity`、`transform` 以外的动画）会触发重绘甚至重排，影响渲染性能。\n- 动画优先使用 `transform` 和 `opacity`，它们可由 GPU 加速，且不会触发重排。\n\n---\n\n### **6. 不要使用 `@import`**\n- `@import` 会阻塞并行下载，导致 CSS 文件串行加载，增加页面加载时间。\n- 应始终使用 `<link rel=\"stylesheet\">` 引入外部样式表。\n\n---\n\n### **7. 其他优化技巧**\n- **减少重排（reflow）和重绘（repaint）**：避免频繁读写布局属性（如 `offsetWidth`、`clientHeight`）。\n- **利用继承**：对可继承的属性（如 `color`、`font-size`）避免重复声明。\n- **CSS Sprites**：将多个小图标合并为一张图，通过 `background-position` 定位，减少 HTTP 请求。\n- **Base64 内联小图标**：对极小的图片（如 <2KB）转为 Base64 内联，减少请求（但注意会增大 HTML/CSS 体积，慎用）。\n\n---\n\n### **总结**\nCSS 性能优化核心在于：**减少阻塞、缩小体积、提升解析与渲染效率**。结合关键 CSS 内联、异步加载、选择器简化和现代动画实践，可显著提升页面加载速度与用户体验。",
+            "keywords": ["CSS优化", "关键CSS", "异步加载", "选择器性能", "重排重绘", "@import", "CSS压缩"],
+            "hints": [
+                "首屏关键CSS建议内联，其余异步加载",
+                "避免使用@import，它会阻塞并行下载",
+                "动画优先使用transform和opacity，性能更好"
+            ]
+        },
+        {
+            id: 'css8',
+            title: '两栏布局：左边定宽，右边自适应方案',
+            difficulty: 'Easy',
+            category: 'CSS',
+            question: `如何实现两栏布局：左边定宽，右边自适应？请至少列举三种常见的实现方式，并说明各自的优缺点。`,
+            tags: ['两栏布局', '布局', 'flex', 'float', 'grid'],
+            points: 10,
+            referenceAnswer: `## 两栏布局：左边定宽，右边自适应方案
+
+---
+
+### **1. Flex 布局（最推荐）**
+\`\`\`css
+.container {
+  display: flex;
+}
+.left {
+  width: 200px;
+}
+.right {
+  flex: 1;
+}
+\`\`\`
+
+**优点：** 代码简洁、语义清晰、易维护、响应式友好  
+**缺点：** IE9- 不支持
+
+---
+
+### **2. Float + margin 布局（经典方案）**
+\`\`\`css
+.left {
+  float: left;
+  width: 200px;
+}
+.right {
+  margin-left: 200px;
+}
+\`\`\`
+
+**优点：** 兼容性好（支持 IE6+）  
+**缺点：** 需要清除浮动；HTML 结构有顺序要求；不够语义化
+
+---
+
+### **3. Float + BFC 布局**
+\`\`\`css
+.left {
+  float: left;
+  width: 200px;
+}
+.right {
+  overflow: hidden; /* 触发 BFC */
+}
+\`\`\`
+
+**优点：** 不需要计算 margin 值；右侧自动适应  
+**缺点：** 需要清除浮动；overflow 可能影响内容显示
+
+---
+
+### **4. Position 绝对定位**
+\`\`\`css
+.container {
+  position: relative;
+}
+.left {
+  position: absolute;
+  width: 200px;
+}
+.right {
+  margin-left: 200px;
+}
+\`\`\`
+
+**优点：** 精确控制位置  
+**缺点：** 脱离文档流；高度不易控制；不推荐用于常规布局
+
+---
+
+### **5. Grid 布局（现代方案）**
+\`\`\`css
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+\`\`\`
+
+**优点：** 最简洁强大；适合复杂布局  
+**缺点：** IE 不支持（IE10/11 需要前缀）
+
+---
+
+### **6. Calc 计算宽度**
+\`\`\`css
+.left {
+  float: left;
+  width: 200px;
+}
+.right {
+  float: left;
+  width: calc(100% - 200px);
+}
+\`\`\`
+
+**优点：** 灵活计算宽度  
+**缺点：** 需要清除浮动；calc 兼容性 IE9+
+
+---
+
+**总结**  
+Flex 和 Grid 是现代项目的首选方案，Float + margin/BFC 适用于需要兼容老旧浏览器的场景。Position 方案不推荐用于常规两栏布局。
+`,
+            keywords: ['两栏布局', 'flex', 'float', 'grid', '自适应', 'BFC'],
+            hints: [
+                'flex 布局是最简单的方法',
+                'float + margin 是经典的老方案',
+                'grid 的 grid-template-columns 可以快速实现'
+            ]
+        },
+
     ],
     'JavaScript': [
         {
@@ -118,6 +513,115 @@ const mockQuizzesByCategory = {
                 'ES2020新增了BigInt'
             ]
         },
+        {
+            id: 'q2',
+            title: 'typeof 类型判断',
+            difficulty: 'Medium',
+            category: 'JavaScript',
+            question: `typeof 是否能正确判断类型？instanceof 能正确判断对象的原理是什么？`,
+            tags: ['typeof', 'instanceof', '类型判断', '原型链'],
+            points: 15,
+            referenceAnswer: `## typeof 类型判断
+
+---
+
+### **typeof 的判断结果**
+
+\`\`\`javascript
+typeof 1              // 'number'
+typeof '1'            // 'string'
+typeof true           // 'boolean'
+typeof undefined      // 'undefined'
+typeof Symbol()       // 'symbol'
+typeof 10n            // 'bigint'
+typeof function(){}   // 'function'
+
+// 注意以下特殊情况
+typeof null           // 'object' ❌ （历史遗留bug）
+typeof []             // 'object' ❌ （无法区分数组）
+typeof {}             // 'object'
+typeof new Date()     // 'object' ❌ （无法区分具体对象类型）
+\`\`\`
+
+**typeof 的局限性：**
+1. **null 判断错误**：\`typeof null\` 返回 \`'object'\`（JavaScript 的历史 bug）
+2. **无法区分对象类型**：数组、日期、正则等都返回 \`'object'\`
+3. **只能准确判断基本类型**（除了 null）和 function
+
+---
+
+### **instanceof 的原理**
+
+**作用：** 判断对象是否是某个构造函数的实例
+
+\`\`\`javascript
+[] instanceof Array        // true
+[] instanceof Object       // true
+new Date() instanceof Date // true
+\`\`\`
+
+**原理：** instanceof 通过**原型链**判断，检查右侧构造函数的 \`prototype\` 是否出现在左侧对象的原型链上。
+
+\`\`\`javascript
+// instanceof 的实现原理
+function myInstanceof(left, right) {
+  // 获取对象的原型
+  let proto = Object.getPrototypeOf(left);
+  // 获取构造函数的 prototype
+  let prototype = right.prototype;
+  
+  // 沿着原型链查找
+  while (true) {
+    if (proto === null) return false;
+    if (proto === prototype) return true;
+    proto = Object.getPrototypeOf(proto);
+  }
+}
+\`\`\`
+
+**instanceof 的局限性：**
+1. **无法判断基本类型**：\`1 instanceof Number\` 返回 \`false\`
+2. **跨 iframe 失效**：不同 iframe 的对象原型链不同
+3. **可以被修改**：手动修改 \`prototype\` 会影响判断结果
+
+---
+
+### **更准确的类型判断方法**
+
+\`\`\`javascript
+// 使用 Object.prototype.toString.call()
+Object.prototype.toString.call(1)          // '[object Number]'
+Object.prototype.toString.call('1')        // '[object String]'
+Object.prototype.toString.call(true)       // '[object Boolean]'
+Object.prototype.toString.call(null)       // '[object Null]' ✅
+Object.prototype.toString.call(undefined)  // '[object Undefined]'
+Object.prototype.toString.call([])         // '[object Array]' ✅
+Object.prototype.toString.call({})         // '[object Object]'
+Object.prototype.toString.call(new Date()) // '[object Date]' ✅
+Object.prototype.toString.call(/regex/)    // '[object RegExp]'
+Object.prototype.toString.call(function(){}) // '[object Function]'
+\`\`\`
+
+---
+
+**总结：**
+- \`typeof\` 适合判断基本类型（除了 null），但无法区分对象类型
+- \`instanceof\` 通过原型链判断对象类型，但无法判断基本类型
+- \`Object.prototype.toString.call()\` 是最准确的类型判断方法`,
+            keywords: ['typeof', 'instanceof', '类型判断', '原型链', 'Object.prototype.toString'],
+            hints: [
+                'typeof null 返回的是 "object"',
+                'instanceof 基于原型链查找',
+                'Object.prototype.toString.call() 是最准确的判断方法'
+            ]
+        },
+
+
+
+
+
+
+
         {
             id: 'q2',
             title: '解释 JavaScript 的闭包（Closure）',

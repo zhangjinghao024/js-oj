@@ -197,7 +197,7 @@ function App() {
         {/* 导航栏 - 始终显示 */}
         <header className="app-header">
           <div className="header-content">
-            <h1>JavaScript 在线练习系统</h1>
+            <h1>111</h1>
             <nav className="header-nav">
               <button
                   className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
