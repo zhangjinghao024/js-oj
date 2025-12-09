@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useJudgeStore } from './store/judgeStore';
 import { fetchProblems, submitCode, runCode, fetchRecords } from './api/judgeApi';
 import ProblemList from './components/ProblemList';
 import ProblemDetail from './components/ProblemDetail';
 import CodeEditor from './components/CodeEditor';
 import TestResult from './components/TestResult';
+import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
 import './App.css';
 
@@ -25,6 +26,14 @@ function App() {
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // 侧边栏宽度调整相关状态
+  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef(null);
+
+  // ⭐ 用于强制刷新提交历史
+  const [submissionKey, setSubmissionKey] = useState(0);
 
   // 加载题目列表和记录
   useEffect(() => {
@@ -58,6 +67,41 @@ function App() {
 
     loadData();
   }, [setProblems, setRecords]);
+
+  // 处理拖拽调整宽度
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    document.body.classList.add('resizing');
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+
+      const newWidth = e.clientX - (sidebarRef.current?.getBoundingClientRect().left || 0);
+
+      // 限制最小和最大宽度
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.classList.remove('resizing');
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   // 运行代码(只运行示例测试用例)
   const handleRunCode = async () => {
@@ -113,6 +157,9 @@ function App() {
       if (result.record) {
         updateProblemRecord(currentProblem.id, result.record);
       }
+
+      // ⭐ 刷新提交历史
+      setSubmissionKey(prev => prev + 1);
 
       setActiveTab('result');
     } catch (err) {
@@ -176,9 +223,20 @@ function App() {
         ) : (
             // 手写题页面
             <div className="app-container">
-              {/* 左侧: 题目列表 */}
-              <aside className="sidebar">
+              {/* 左侧: 题目列表 - 可拖拽调整宽度 */}
+              <aside
+                  ref={sidebarRef}
+                  className="sidebar"
+                  style={{ width: `${sidebarWidth}px` }}
+              >
                 <ProblemList />
+
+                {/* 拖拽手柄 */}
+                <div
+                    className="resizer"
+                    onMouseDown={handleMouseDown}
+                    title="拖拽调整宽度"
+                />
               </aside>
 
               {/* 中间: 题目详情和代码编辑器 */}
@@ -196,13 +254,26 @@ function App() {
                   >
                     测试结果
                   </button>
+                  {/* ⭐ 新增提交历史标签 */}
+                  <button
+                      className={`tab-button ${activeTab === 'submissions' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('submissions')}
+                  >
+                    提交历史
+                  </button>
                 </div>
 
                 <div className="tab-content">
                   {activeTab === 'description' ? (
                       <ProblemDetail />
-                  ) : (
+                  ) : activeTab === 'result' ? (
                       <TestResult />
+                  ) : (
+                      // ⭐ 显示提交历史
+                      <ProblemSubmissions
+                          problemId={currentProblem?.id}
+                          key={submissionKey}
+                      />
                   )}
                 </div>
 
@@ -225,7 +296,7 @@ function App() {
                           onClick={handleSubmit}
                           title="提交代码给 AI 分析"
                       >
-                        🤖 AI 分析
+                        提交
                       </button>
                     </div>
                   </div>
