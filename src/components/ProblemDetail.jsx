@@ -6,11 +6,16 @@ import remarkBreaks from 'remark-breaks';
 import './ProblemDetail.css';
 
 const ProblemDetail = () => {
-    const { currentProblem } = useJudgeStore();
+    const { currentProblem, reviewQueue, addToReviewQueue, getReviewStatus } = useJudgeStore();
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
     const [isExamplesExpanded, setIsExamplesExpanded] = useState(true);
     const [isConstraintsExpanded, setIsConstraintsExpanded] = useState(true);
     const [isHintsExpanded, setIsHintsExpanded] = useState(true);
+
+    const reviewStatus = currentProblem ? getReviewStatus('code', currentProblem.id) : 'unreviewed';
+    const isInReviewQueue = currentProblem
+      ? Boolean(reviewQueue?.code?.[currentProblem.id])
+      : false;
 
     if (!currentProblem) {
         return (
@@ -26,6 +31,18 @@ const ProblemDetail = () => {
         <div className="problem-detail">
             <div className="problem-header">
                 <h2 className="problem-title">{currentProblem.title}</h2>
+                <div className="review-tools">
+                    <span className={`review-status ${reviewStatus}`}>
+                        {reviewStatus === 'reviewed' ? '已复习' : '未复习'}
+                    </span>
+                    <button
+                        className={`review-btn ${isInReviewQueue ? 'in-queue' : ''}`}
+                        onClick={() => addToReviewQueue('code', { id: currentProblem.id, title: currentProblem.title })}
+                        disabled={isInReviewQueue}
+                    >
+                        {isInReviewQueue ? '已在复习队列' : '放入复习队列'}
+                    </button>
+                </div>
                 <span className={`difficulty-tag ${currentProblem.difficulty?.toLowerCase()}`}>
           {currentProblem.difficulty}
         </span>

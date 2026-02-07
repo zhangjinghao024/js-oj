@@ -2,6 +2,9 @@ import { create } from 'zustand';
 
 const LAST_PROBLEM_ID_KEY = 'js-oj:lastProblemId';
 const CODE_DRAFTS_KEY = 'js-oj:codeDrafts';
+const REVIEW_QUEUE_KEY = 'js-oj:reviewQueue';
+const DAILY_ATTEMPTS_KEY = 'js-oj:dailyAttempts';
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 const readLastProblemId = () => {
   if (typeof window === 'undefined') return null;
@@ -44,6 +47,80 @@ const writeCodeDrafts = (drafts) => {
   }
 };
 
+const readReviewQueue = () => {
+  if (typeof window === 'undefined') {
+    return { code: {}, quiz: {}, leetcode: {} };
+  }
+  try {
+    const raw = window.localStorage.getItem(REVIEW_QUEUE_KEY);
+    if (!raw) return { code: {}, quiz: {}, leetcode: {} };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return { code: {}, quiz: {}, leetcode: {} };
+    }
+    return {
+      code: parsed.code || {},
+      quiz: parsed.quiz || {},
+      leetcode: parsed.leetcode || {}
+    };
+  } catch (err) {
+    console.warn('读取复习队列失败:', err);
+    return { code: {}, quiz: {}, leetcode: {} };
+  }
+};
+
+const writeReviewQueue = (queue) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(REVIEW_QUEUE_KEY, JSON.stringify(queue));
+  } catch (err) {
+    console.warn('保存复习队列失败:', err);
+  }
+};
+
+const readDailyAttempts = () => {
+  if (typeof window === 'undefined') {
+    return { code: {}, quiz: {} };
+  }
+  try {
+    const raw = window.localStorage.getItem(DAILY_ATTEMPTS_KEY);
+    if (!raw) return { code: {}, quiz: {} };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return { code: {}, quiz: {} };
+    }
+    return {
+      code: parsed.code || {},
+      quiz: parsed.quiz || {}
+    };
+  } catch (err) {
+    console.warn('读取今日进度失败:', err);
+    return { code: {}, quiz: {} };
+  }
+};
+
+const writeDailyAttempts = (attempts) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DAILY_ATTEMPTS_KEY, JSON.stringify(attempts));
+  } catch (err) {
+    console.warn('保存今日进度失败:', err);
+  }
+};
+
+const getTodayKey = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getReviewStatusFromEntry = (entry) => {
+  if (!entry?.lastReviewedAt) return 'unreviewed';
+  return Date.now() - entry.lastReviewedAt < THREE_DAYS_MS ? 'reviewed' : 'unreviewed';
+};
+
 const getDraftForId = (problemId) => {
   if (!problemId) return null;
   const drafts = readCodeDrafts();
@@ -76,6 +153,12 @@ export const useJudgeStore = create((set, get) => ({
   // 题目记录
   records: {},
 
+  // 复习队列
+  reviewQueue: readReviewQueue(),
+
+  // 今日尝试记录
+  dailyAttempts: readDailyAttempts(),
+
   // 设置题目列表
   setProblems: (problems) => {
     const lastProblemId = readLastProblemId();
@@ -107,6 +190,77 @@ export const useJudgeStore = create((set, get) => ({
       [problemId]: record
     }
   })),
+
+  // 放入复习队列
+  addToReviewQueue: (type, item) => set((state) => {
+    const queue = state.reviewQueue || { code: {}, quiz: {}, leetcode: {} };
+    const bucket = queue[type] || {};
+    const existing = bucket[item.id];
+    const nextEntry = {
+      id: item.id,
+      title: item.title,
+      link: item.link,
+      addedAt: existing?.addedAt || Date.now(),
+      lastReviewedAt: existing?.lastReviewedAt || null
+    };
+    const nextQueue = {
+      ...queue,
+      [type]: {
+        ...bucket,
+        [item.id]: nextEntry
+      }
+    };
+    writeReviewQueue(nextQueue);
+    return { reviewQueue: nextQueue };
+  }),
+
+  // 标记已复习
+  markReviewed: (type, id) => set((state) => {
+    const queue = state.reviewQueue || { code: {}, quiz: {}, leetcode: {} };
+    const bucket = queue[type] || {};
+    const existing = bucket[id];
+    if (!existing) return { reviewQueue: queue };
+    const nextQueue = {
+      ...queue,
+      [type]: {
+        ...bucket,
+        [id]: {
+          ...existing,
+          lastReviewedAt: Date.now()
+        }
+      }
+    };
+    writeReviewQueue(nextQueue);
+    return { reviewQueue: nextQueue };
+  }),
+
+  // 获取复习状态
+  getReviewStatus: (type, id) => {
+    const queue = get().reviewQueue || { code: {}, quiz: {}, leetcode: {} };
+    const entry = queue[type]?.[id];
+    return getReviewStatusFromEntry(entry);
+  },
+
+  // 记录今日提交
+  logDailyAttempt: (type, item) => set((state) => {
+    const todayKey = getTodayKey();
+    const attempts = state.dailyAttempts || { code: {}, quiz: {} };
+    const bucket = attempts[type] || {};
+    const todayBucket = bucket[todayKey] || {};
+    const nextBucket = {
+      ...todayBucket,
+      [item.id]: { id: item.id, title: item.title }
+    };
+    const nextAttempts = {
+      ...attempts,
+      [type]: {
+        ...bucket,
+        [todayKey]: nextBucket
+      }
+    };
+    writeDailyAttempts(nextAttempts);
+    return { dailyAttempts: nextAttempts };
+  }),
 
   // 选择题目
   selectProblem: (index) => set((state) => {

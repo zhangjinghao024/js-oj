@@ -8,6 +8,8 @@ import TestResult from './components/TestResult';
 import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
 import ProjectIntroPage from './pages/ProjectIntroPage';
+import ReviewPage from './pages/ReviewPage';
+import reviewBanner from './assets/review-banner.png';
 import './App.css';
 
 function App() {
@@ -23,15 +25,21 @@ function App() {
     updateProblemRecord,
     saveDraft,
     problems,
-    records
+    records,
+    addToReviewQueue,
+    selectProblem,
+    reviewQueue,
+    dailyAttempts,
+    logDailyAttempt
   } = useJudgeStore();
 
-  const [currentPage, setCurrentPage] = useState('coding');
+  const [currentPage, setCurrentPage] = useState('review');
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const saveDraftTimerRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showReviewReminder, setShowReviewReminder] = useState(false);
 
   // 侧边栏宽度调整相关状态
   const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -74,6 +82,47 @@ function App() {
     loadData();
   }, [setProblems, setRecords]);
 
+  // 每日复习提醒（首次打开或次日唤醒）
+  useEffect(() => {
+    const STORAGE_KEY = 'js-oj:reviewReminderDate';
+    const getTodayKey = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const checkAndShow = () => {
+      try {
+        const todayKey = getTodayKey();
+        const lastShown = window.localStorage.getItem(STORAGE_KEY);
+        if (lastShown !== todayKey) {
+          window.localStorage.setItem(STORAGE_KEY, todayKey);
+          setShowReviewReminder(true);
+        }
+      } catch (err) {
+        console.warn('复习提醒检查失败:', err);
+      }
+    };
+
+    checkAndShow();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndShow();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
+  }, []);
+
   const stats = useMemo(() => {
     let passed = 0;
     let attempted = 0;
@@ -89,6 +138,15 @@ function App() {
     const total = problems.length || 0;
     return { passed, attempted, unattempted, total };
   }, [problems, records]);
+
+  const todayProgressList = useMemo(() => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const entries = Object.values(dailyAttempts?.code?.[todayKey] || {});
+    return entries.map((item) => ({ id: item.id, title: item.title }));
+  }, [dailyAttempts]);
+
+  const todayProgress = todayProgressList.length;
+  const [showTodayModal, setShowTodayModal] = useState(false);
 
   const filteredProblems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -208,6 +266,17 @@ function App() {
 
       setJudgeResult(result);
 
+      if (currentProblem) {
+        addToReviewQueue('code', {
+          id: currentProblem.id,
+          title: currentProblem.title
+        });
+        logDailyAttempt('code', {
+          id: currentProblem.id,
+          title: currentProblem.title
+        });
+      }
+
       // 更新记录到 store
       if (result.record) {
         updateProblemRecord(currentProblem.id, result.record);
@@ -261,7 +330,16 @@ function App() {
         {/* 导航栏 - 始终显示 */}
         <header className="app-header">
           <div className="header-content">
-            <h1>111</h1>
+            <div className="header-left">
+              {/*<h1>111</h1>*/}
+              <button
+                className={`nav-btn ${currentPage === 'review' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('review')}
+              >
+                📚 今日复习
+              </button>
+              <img className="review-banner" src={reviewBanner} alt="今日复习横幅" />
+            </div>
             <nav className="header-nav">
               <button
                 className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
@@ -295,6 +373,24 @@ function App() {
         {/* 根据当前页面渲染不同内容 */}
         {currentPage === 'quiz' ? (
           <QuizPage />
+        ) : currentPage === 'review' ? (
+          <ReviewPage
+            onGoCode={(id) => {
+              const index = problems.findIndex((problem) => problem.id === id);
+              if (index >= 0) {
+                selectProblem(index);
+                setCurrentPage('coding');
+              }
+            }}
+            onGoQuiz={(id) => {
+              try {
+                window.localStorage.setItem('js-oj:pendingQuizId', id);
+              } catch (err) {
+                console.warn('保存待跳转题目失败:', err);
+              }
+              setCurrentPage('quiz');
+            }}
+          />
         ) : currentPage === 'intro' ? (
           <ProjectIntroPage />
         ) : (
@@ -312,6 +408,11 @@ function App() {
                     <span className="progress-segment attempted" style={{ width: `${progressAttempted}%` }} />
                     <span className="progress-segment unattempted" style={{ width: `${progressUnattempted}%` }} />
                   </div>
+                </div>
+                <div className="coding-today-progress" onClick={() => setShowTodayModal(true)}>
+                  <span className="today-label">今日进度</span>
+                  <span className="today-count">{todayProgress}</span>
+                  <span className="today-unit">题</span>
                 </div>
                 <div className="problem-filters">
                   <input
@@ -417,6 +518,48 @@ function App() {
                 <div className="reset-modal-footer">
                   <button className="reset-btn cancel" onClick={handleCancelReset}>取消</button>
                   <button className="reset-btn confirm" onClick={handleConfirmReset}>确定重置</button>
+                </div>
+              </div>
+            </div>
+        )}
+        {showReviewReminder && (
+            <div className="reset-modal-overlay" onClick={() => setShowReviewReminder(false)}>
+              <div className="reset-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="reset-modal-header">
+                  <h3>今日复习提醒</h3>
+                  <button className="reset-modal-close" onClick={() => setShowReviewReminder(false)}>✕</button>
+                </div>
+                <div className="reset-modal-body">
+                  <p>记得去复习，保持连续性。</p>
+                </div>
+                <div className="reset-modal-footer">
+                  <button className="reset-btn confirm" onClick={() => {
+                    setShowReviewReminder(false);
+                    setCurrentPage('review');
+                  }}>
+                    去复习
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+        {showTodayModal && (
+            <div className="reset-modal-overlay" onClick={() => setShowTodayModal(false)}>
+              <div className="reset-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="reset-modal-header">
+                  <h3>今日已尝试题目</h3>
+                  <button className="reset-modal-close" onClick={() => setShowTodayModal(false)}>✕</button>
+                </div>
+                <div className="reset-modal-body">
+                  {todayProgressList.length === 0 ? (
+                    <p>今天还没有尝试过题目。</p>
+                  ) : (
+                    <ul className="today-list">
+                      {todayProgressList.map((item) => (
+                        <li key={item.id}>{item.title}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>

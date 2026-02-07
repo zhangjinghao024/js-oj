@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { submitQuizAnswer, speechToText } from '../api/judgeApi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import VoiceRecorder from '../components/VoiceRecorder';
+import { useJudgeStore } from '../store/judgeStore';
 import './QuizPage.css';
 
 // 模拟问答题数据 - 按分类组织
@@ -764,6 +765,8 @@ Object.prototype.toString.call(function(){}) // '[object Function]'
     ]
 };
 
+const PENDING_QUIZ_KEY = 'js-oj:pendingQuizId';
+
 const QuizPage = () => {
     // 将分类数据转换为扁平的题目列表
     const allQuizzes = Object.values(mockQuizzesByCategory).flat();
@@ -772,6 +775,8 @@ const QuizPage = () => {
     const [userAnswer, setUserAnswer] = useState('');
     const [showAnswer, setShowAnswer] = useState(false);
     const [showHints, setShowHints] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const { reviewQueue, addToReviewQueue, getReviewStatus, dailyAttempts, logDailyAttempt } = useJudgeStore();
 
     // 分类展开/折叠状态
     const [expandedCategories, setExpandedCategories] = useState({
@@ -785,7 +790,30 @@ const QuizPage = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState(null);
 
-    const currentQuiz = allQuizzes[currentQuizIndex];
+    const filteredQuizzes = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        if (!keyword) return allQuizzes;
+        return allQuizzes.filter((quiz) => quiz.title.toLowerCase().includes(keyword));
+    }, [allQuizzes, searchTerm]);
+
+    useEffect(() => {
+        setCurrentQuizIndex(0);
+    }, [searchTerm]);
+
+    const currentQuiz = filteredQuizzes[currentQuizIndex] || filteredQuizzes[0];
+
+    const progressStats = useMemo(() => {
+        const total = allQuizzes.length;
+        if (!total) return { reviewed: 0, unreviewed: 0, total: 0, attemptedToday: 0 };
+        let reviewed = 0;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        allQuizzes.forEach((quiz) => {
+            const status = getReviewStatus('quiz', quiz.id);
+            if (status === 'reviewed') reviewed += 1;
+        });
+        const attemptedToday = Object.keys(dailyAttempts?.quiz?.[todayKey] || {}).length;
+        return { reviewed, unreviewed: total - reviewed, total, attemptedToday };
+    }, [allQuizzes, getReviewStatus, dailyAttempts]);
 
     // 切换分类展开/折叠
     const toggleCategory = (category) => {
@@ -797,7 +825,7 @@ const QuizPage = () => {
 
     // 选择题目
     const selectQuiz = (quizId) => {
-        const index = allQuizzes.findIndex(q => q.id === quizId);
+        const index = filteredQuizzes.findIndex(q => q.id === quizId);
         if (index !== -1) {
             setCurrentQuizIndex(index);
             setUserAnswer('');
@@ -806,6 +834,18 @@ const QuizPage = () => {
             setAnalysisResult(null);
         }
     };
+
+    useEffect(() => {
+        try {
+            const pendingId = window.localStorage.getItem(PENDING_QUIZ_KEY);
+            if (pendingId) {
+                selectQuiz(pendingId);
+                window.localStorage.removeItem(PENDING_QUIZ_KEY);
+            }
+        } catch (err) {
+            console.warn('读取待跳转题目失败:', err);
+        }
+    }, [filteredQuizzes]);
 
     // 获取分类图标
     const getCategoryIcon = (category) => {
@@ -842,6 +882,9 @@ const QuizPage = () => {
         }
     };
 
+    const reviewStatus = currentQuiz ? getReviewStatus('quiz', currentQuiz.id) : 'unreviewed';
+    const isInReviewQueue = currentQuiz ? Boolean(reviewQueue?.quiz?.[currentQuiz.id]) : false;
+
     const handleSubmitAnswer = async () => {
         if (!userAnswer.trim()) {
             alert('请先输入你的答案');
@@ -863,6 +906,14 @@ const QuizPage = () => {
             if (result.success && result.hasAIAnalysis) {
                 setAnalysisResult(result);
                 setShowAnswer(true);
+                addToReviewQueue('quiz', {
+                    id: currentQuiz.id,
+                    title: currentQuiz.title
+                });
+                logDailyAttempt('quiz', {
+                    id: currentQuiz.id,
+                    title: currentQuiz.title
+                });
             } else {
                 alert('AI 分析服务暂时不可用，请稍后重试');
             }
@@ -901,6 +952,9 @@ const QuizPage = () => {
         setAnalysisResult(null);
     };
 
+    const progressReviewed = progressStats.total ? (progressStats.reviewed / progressStats.total) * 100 : 0;
+    const progressUnreviewed = Math.max(0, 100 - progressReviewed);
+
     const handleVoiceInput = async (audioData) => {
         try {
             console.log('🎤 开始语音识别...');
@@ -924,6 +978,33 @@ const QuizPage = () => {
 
     return (
         <div className="quiz-page">
+            <section className="quiz-topbar">
+                <div className="quiz-progress">
+                    <div className="progress-stats">
+                        <span className="progress-item passed">已复习 {progressStats.reviewed}</span>
+                        <span className="progress-item unattempted">未复习 {progressStats.unreviewed}</span>
+                        <span className="progress-total">总计 {progressStats.total}</span>
+                    </div>
+                    <div className="progress-bar">
+                        <span className="progress-segment passed" style={{ width: `${progressReviewed}%` }} />
+                        <span className="progress-segment unattempted" style={{ width: `${progressUnreviewed}%` }} />
+                    </div>
+                </div>
+                <div className="quiz-today-progress">
+                    <span className="today-label">今日进度</span>
+                    <span className="today-count">{progressStats.attemptedToday}</span>
+                    <span className="today-unit">题</span>
+                </div>
+                <div className="quiz-filters">
+                    <input
+                        className="quiz-search"
+                        type="text"
+                        placeholder="搜索题目..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </section>
             <div className="quiz-container">
                 {/* 左侧：分类题目列表 */}
                 <aside className="quiz-sidebar">
@@ -952,30 +1033,35 @@ const QuizPage = () => {
                                 {/* 题目列表 */}
                                 {expandedCategories[category] && (
                                     <div className="quiz-items">
-                                        {mockQuizzesByCategory[category].map((quiz, index) => {
-                                            const globalIndex = allQuizzes.findIndex(q => q.id === quiz.id);
-                                            return (
-                                                <div
-                                                    key={quiz.id}
-                                                    className={`quiz-item ${currentQuizIndex === globalIndex ? 'active' : ''}`}
-                                                    onClick={() => selectQuiz(quiz.id)}
-                                                >
-                                                    <div className="quiz-item-header">
-                                                        <span className="quiz-number">#{index + 1}</span>
-                                                        <span
-                                                            className="quiz-difficulty"
-                                                            style={{ color: getDifficultyColor(quiz.difficulty) }}
-                                                        >
-                                                            {quiz.difficulty}
-                                                        </span>
+                                        {mockQuizzesByCategory[category]
+                                            .filter((quiz) => {
+                                                if (!searchTerm.trim()) return true;
+                                                return quiz.title.toLowerCase().includes(searchTerm.trim().toLowerCase());
+                                            })
+                                            .map((quiz, index) => {
+                                                const globalIndex = filteredQuizzes.findIndex(q => q.id === quiz.id);
+                                                return (
+                                                    <div
+                                                        key={quiz.id}
+                                                        className={`quiz-item ${currentQuizIndex === globalIndex ? 'active' : ''}`}
+                                                        onClick={() => selectQuiz(quiz.id)}
+                                                    >
+                                                        <div className="quiz-item-header">
+                                                            <span className="quiz-number">#{index + 1}</span>
+                                                            <span
+                                                                className="quiz-difficulty"
+                                                                style={{ color: getDifficultyColor(quiz.difficulty) }}
+                                                            >
+                                                                {quiz.difficulty}
+                                                            </span>
+                                                        </div>
+                                                        <div className="quiz-title">{quiz.title}</div>
+                                                        <div className="quiz-meta">
+                                                            <span className="quiz-points">🏆 {quiz.points}分</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="quiz-title">{quiz.title}</div>
-                                                    <div className="quiz-meta">
-                                                        <span className="quiz-points">🏆 {quiz.points}分</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
                                     </div>
                                 )}
                             </div>
@@ -991,6 +1077,18 @@ const QuizPage = () => {
                             <div className="quiz-detail">
                                 <div className="quiz-detail-header">
                                     <h2>{currentQuiz.title}</h2>
+                                    <div className="quiz-review-tools">
+                                        <span className={`review-status ${reviewStatus}`}>
+                                            {reviewStatus === 'reviewed' ? '已复习' : '未复习'}
+                                        </span>
+                                        <button
+                                            className={`review-btn ${isInReviewQueue ? 'in-queue' : ''}`}
+                                            onClick={() => addToReviewQueue('quiz', { id: currentQuiz.id, title: currentQuiz.title })}
+                                            disabled={isInReviewQueue}
+                                        >
+                                            {isInReviewQueue ? '已在复习队列' : '放入复习队列'}
+                                        </button>
+                                    </div>
                                     <div className="quiz-badges">
                                         <span
                                             className="badge badge-difficulty"

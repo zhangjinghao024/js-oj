@@ -33,6 +33,57 @@
   flex: 1;
 }
 
+.review-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-status {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  letter-spacing: 0.4px;
+}
+
+.review-status.reviewed {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.review-status.unreviewed {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.review-btn {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #333;
+}
+
+.review-btn:disabled {
+  cursor: not-allowed;
+  color: #0f172a;
+  background: #fde68a;
+  border-color: #f59e0b;
+}
+
+.review-btn.in-queue {
+  background: #fde68a;
+  border-color: #f59e0b;
+  color: #0f172a;
+}
+
 .difficulty-tag {
   padding: 4px 12px;
   border-radius: 4px;

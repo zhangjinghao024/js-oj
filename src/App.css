@@ -35,6 +35,19 @@ body {
   align-items: center;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.review-banner {
+  height: 6rem;
+  width: auto;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .app-header h1 {
   font-size: 28px;
   font-weight: 700;
@@ -184,6 +197,43 @@ body {
   align-items: center;
   justify-content: flex-end;
   min-width: 240px;
+}
+
+.coding-today-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  font-weight: 700;
+  color: #111827;
+  min-width: 140px;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.today-label {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.today-count {
+  font-size: 20px;
+  color: #2563eb;
+}
+
+.today-unit {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.today-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #333;
+  line-height: 1.8;
 }
 
 .problem-search {
