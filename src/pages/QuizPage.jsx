@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { submitQuizAnswer, speechToText } from '../api/judgeApi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -710,21 +710,26 @@ Object.prototype.toString.call(function(){}) // '[object Function]'
     'React': [
         {
             id: 'react1',
-            title: 'React Hooks 的使用规则',
+            title: 'react 和 vue的理解',
             difficulty: 'Medium',
             category: 'React',
-            question: `请说明 React Hooks 的使用规则，以及为什么要遵守这些规则。`,
-            tags: ['Hooks', '规则', 'React'],
+            question: `请谈谈你对 React 和 Vue 的理解，可以从使用方式、底层实现、生态和社区这几个方面展开。`,
+            tags: ['React', 'Vue', '框架对比'],
             points: 15,
-            referenceAnswer: `**Hooks 使用规则：**
-1. 只在最顶层使用 Hooks
-2. 只在 React 函数中调用 Hooks
-3. 不要在循环、条件或嵌套函数中调用
+            referenceAnswer: `使用上：
+React用Hooks（useState、useEffect）管理状态和副作用，用JSX描述UI，本质就是JavaScript。
+Vue 3用Composition API在setup里写逻辑，用模板语法（v-if、v-for）描述UI，更接近HTML。
 
-**原因：**
-- React 依赖 Hooks 调用顺序来管理状态
-- 保证每次渲染时 Hooks 调用顺序一致`,
-            hints: ['顶层调用', '不在循环和条件中使用']
+底层实现：
+Vue基于Proxy实现响应式，数据变化时精确追踪依赖，只更新相关组件。
+React通过setState手动触发更新，会重新执行组件函数生成新虚拟DOM，然后Diff对比后更新真实DOM。
+
+生态：
+Vue官方维护核心生态，像Vue Router、Pinia都是官方的，开箱即用。
+React是社区驱动，React Router、Redux这些都是社区维护，选择多但需要自己搭配。
+
+总的来说，Vue上手快、整合度高，React更灵活、生态更强大。我两个都用过，会根据项目复杂度和团队情况选择。`,
+            hints: ['使用方式差异', '响应式与渲染机制', '生态与社区对比']
         },
         {
             id: 'react2',
@@ -762,29 +767,89 @@ Object.prototype.toString.call(function(){}) // '[object Function]'
 5. Event Bus（发布订阅）`,
             hints: ['props 和回调', 'Context API', '状态管理库']
         }
+    ],
+    'RN': [
+        {
+            id: 'rn1',
+            title: 'React Native 的核心组件有哪些？',
+            difficulty: 'Easy',
+            category: 'RN',
+            question: `请列举 React Native 常用的核心组件，并说明它们的用途。`,
+            tags: ['RN', '核心组件', '基础'],
+            points: 10,
+            referenceAnswer: `**常用核心组件：**
+1. **View**：基础容器组件
+2. **Text**：文本展示
+3. **Image**：图片展示
+4. **ScrollView**：可滚动容器
+5. **TextInput**：文本输入
+6. **Pressable/Touchable**：交互点击
+7. **FlatList/SectionList**：列表渲染`,
+            hints: ['View/Text/Image', 'ScrollView/TextInput', 'FlatList/SectionList']
+        },
+        {
+            id: 'rn2',
+            title: 'React Native 与 Web 开发的差异',
+            difficulty: 'Medium',
+            category: 'RN',
+            question: `请说明 React Native 与 Web 前端开发在布局、样式、事件和性能方面的主要差异。`,
+            tags: ['RN', '差异', '性能'],
+            points: 15,
+            referenceAnswer: `**主要差异：**
+1. **布局系统**：RN 只有 Flex，Web 有多种布局方式
+2. **样式单位**：RN 使用无单位的数值（类似 dp），Web 使用 px/rem
+3. **样式作用域**：RN 样式是 JS 对象，Web 是 CSS
+4. **事件模型**：RN 使用 onPress 等事件，Web 使用 DOM 事件
+5. **性能关注点**：RN 关注 JS-UI 线程交互、列表虚拟化等`,
+            hints: ['Flex 是唯一布局', '样式是 JS 对象', 'onPress 事件']
+        }
     ]
 };
 
 const PENDING_QUIZ_KEY = 'js-oj:pendingQuizId';
+const SELECTED_QUIZ_KEY = 'js-oj:selectedQuizId';
+const CATEGORY_ORDER = ['JavaScript', 'React', 'RN'];
+const CATEGORY_META = {
+    'HTML': { icon: '📄', color: '#e34c26' },
+    'CSS': { icon: '🎨', color: '#264de4' },
+    'JavaScript': { icon: '⚡', color: '#f7df1e' },
+    'React': { icon: '⚛️', color: '#61dafb' },
+    'RN': { icon: '📱', color: '#00c2ff' }
+};
+const buildCategoryList = (quizMap) => {
+    const names = Object.keys(quizMap);
+    const orderedNames = [
+        ...CATEGORY_ORDER.filter((name) => names.includes(name)),
+        ...names.filter((name) => !CATEGORY_ORDER.includes(name))
+    ];
+    return orderedNames.map((name) => ({
+        name,
+        quizzes: quizMap[name] || [],
+        icon: CATEGORY_META[name]?.icon || '📚',
+        color: CATEGORY_META[name]?.color || '#667eea'
+    }));
+};
+const buildExpandedCategories = (categories) =>
+    categories.reduce((acc, category) => {
+        acc[category.name] = false;
+        return acc;
+    }, {});
 
 const QuizPage = () => {
     // 将分类数据转换为扁平的题目列表
     const allQuizzes = Object.values(mockQuizzesByCategory).flat();
+    const categoryList = useMemo(() => buildCategoryList(mockQuizzesByCategory), []);
 
     const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [showAnswer, setShowAnswer] = useState(false);
-    const [showHints, setShowHints] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isSelectionReady, setIsSelectionReady] = useState(false);
     const { reviewQueue, addToReviewQueue, getReviewStatus, dailyAttempts, logDailyAttempt } = useJudgeStore();
+    const answerBlockRef = useRef(null);
 
     // 分类展开/折叠状态
-    const [expandedCategories, setExpandedCategories] = useState({
-        'HTML': true,
-        'CSS': true,
-        'JavaScript': true,
-        'React': true
-    });
+    const [expandedCategories, setExpandedCategories] = useState(() => buildExpandedCategories(categoryList));
 
     // AI 分析相关状态
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -799,6 +864,20 @@ const QuizPage = () => {
     useEffect(() => {
         setCurrentQuizIndex(0);
     }, [searchTerm]);
+
+    useEffect(() => {
+        setExpandedCategories((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            categoryList.forEach(({ name }) => {
+                if (next[name] === undefined) {
+                    next[name] = false;
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [categoryList]);
 
     const currentQuiz = filteredQuizzes[currentQuizIndex] || filteredQuizzes[0];
 
@@ -830,7 +909,6 @@ const QuizPage = () => {
             setCurrentQuizIndex(index);
             setUserAnswer('');
             setShowAnswer(false);
-            setShowHints(false);
             setAnalysisResult(null);
         }
     };
@@ -838,36 +916,42 @@ const QuizPage = () => {
     useEffect(() => {
         try {
             const pendingId = window.localStorage.getItem(PENDING_QUIZ_KEY);
+            const savedId = window.localStorage.getItem(SELECTED_QUIZ_KEY);
+            const targetId = pendingId || savedId;
+            if (!targetId) return;
+
+            const index = allQuizzes.findIndex((quiz) => quiz.id === targetId);
+            if (index !== -1) {
+                const targetQuiz = allQuizzes[index];
+                setCurrentQuizIndex(index);
+                setUserAnswer('');
+                setShowAnswer(false);
+                setAnalysisResult(null);
+                setExpandedCategories((prev) => ({
+                    ...prev,
+                    [targetQuiz.category]: true
+                }));
+            }
+
             if (pendingId) {
-                selectQuiz(pendingId);
                 window.localStorage.removeItem(PENDING_QUIZ_KEY);
             }
         } catch (err) {
             console.warn('读取待跳转题目失败:', err);
+        } finally {
+            setIsSelectionReady(true);
         }
-    }, [filteredQuizzes]);
+    }, []);
 
-    // 获取分类图标
-    const getCategoryIcon = (category) => {
-        const icons = {
-            'HTML': '📄',
-            'CSS': '🎨',
-            'JavaScript': '⚡',
-            'React': '⚛️'
-        };
-        return icons[category] || '📚';
-    };
-
-    // 获取分类颜色
-    const getCategoryColor = (category) => {
-        const colors = {
-            'HTML': '#e34c26',
-            'CSS': '#264de4',
-            'JavaScript': '#f7df1e',
-            'React': '#61dafb'
-        };
-        return colors[category] || '#667eea';
-    };
+    useEffect(() => {
+        if (!isSelectionReady) return;
+        if (!currentQuiz?.id) return;
+        try {
+            window.localStorage.setItem(SELECTED_QUIZ_KEY, currentQuiz.id);
+        } catch (err) {
+            console.warn('保存当前题目失败:', err);
+        }
+    }, [currentQuiz?.id, isSelectionReady]);
 
     const getDifficultyColor = (difficulty) => {
         switch (difficulty?.toLowerCase()) {
@@ -881,6 +965,9 @@ const QuizPage = () => {
                 return '#666';
         }
     };
+
+    const getCategoryColor = (category) => CATEGORY_META[category]?.color || '#667eea';
+    const getCategoryIcon = (category) => CATEGORY_META[category]?.icon || '📚';
 
     const reviewStatus = currentQuiz ? getReviewStatus('quiz', currentQuiz.id) : 'unreviewed';
     const isInReviewQueue = currentQuiz ? Boolean(reviewQueue?.quiz?.[currentQuiz.id]) : false;
@@ -905,7 +992,6 @@ const QuizPage = () => {
 
             if (result.success && result.hasAIAnalysis) {
                 setAnalysisResult(result);
-                setShowAnswer(true);
                 addToReviewQueue('quiz', {
                     id: currentQuiz.id,
                     title: currentQuiz.title
@@ -930,7 +1016,6 @@ const QuizPage = () => {
             setCurrentQuizIndex(currentQuizIndex + 1);
             setUserAnswer('');
             setShowAnswer(false);
-            setShowHints(false);
             setAnalysisResult(null);
         }
     };
@@ -940,7 +1025,6 @@ const QuizPage = () => {
             setCurrentQuizIndex(currentQuizIndex - 1);
             setUserAnswer('');
             setShowAnswer(false);
-            setShowHints(false);
             setAnalysisResult(null);
         }
     };
@@ -948,12 +1032,24 @@ const QuizPage = () => {
     const handleReset = () => {
         setUserAnswer('');
         setShowAnswer(false);
-        setShowHints(false);
         setAnalysisResult(null);
     };
 
     const progressReviewed = progressStats.total ? (progressStats.reviewed / progressStats.total) * 100 : 0;
     const progressUnreviewed = Math.max(0, 100 - progressReviewed);
+    const referenceAnswerMarkdown = (analysisResult?.quiz?.referenceAnswer ?? currentQuiz?.referenceAnswer ?? '').trim();
+    const referenceAnswerContent = referenceAnswerMarkdown || '> 暂无参考答案（由后端配置）';
+    const handleToggleAnswer = () => {
+        setShowAnswer((prev) => {
+            const next = !prev;
+            if (next) {
+                window.requestAnimationFrame(() => {
+                    answerBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+            return next;
+        });
+    };
 
     const handleVoiceInput = async (audioData) => {
         try {
@@ -1010,30 +1106,30 @@ const QuizPage = () => {
                 <aside className="quiz-sidebar">
                     <h3 className="quiz-list-title">📚 题目分类</h3>
                     <div className="quiz-categories">
-                        {Object.keys(mockQuizzesByCategory).map(category => (
-                            <div key={category} className="category-section">
+                        {categoryList.map(category => (
+                            <div key={category.name} className="category-section">
                                 {/* 分类标题 */}
                                 <div
                                     className="category-header"
-                                    onClick={() => toggleCategory(category)}
-                                    style={{ borderLeftColor: getCategoryColor(category) }}
+                                    onClick={() => toggleCategory(category.name)}
+                                    style={{ borderLeftColor: category.color }}
                                 >
                                     <div className="category-title">
-                                        <span className="category-icon">{getCategoryIcon(category)}</span>
-                                        <span className="category-name">{category}</span>
+                                        <span className="category-icon">{category.icon}</span>
+                                        <span className="category-name">{category.name}</span>
                                         <span className="category-count">
-                                            ({mockQuizzesByCategory[category].length})
+                                            ({category.quizzes.length})
                                         </span>
                                     </div>
-                                    <span className={`category-arrow ${expandedCategories[category] ? 'expanded' : ''}`}>
+                                    <span className={`category-arrow ${expandedCategories[category.name] ? 'expanded' : ''}`}>
                                         ▼
                                     </span>
                                 </div>
 
                                 {/* 题目列表 */}
-                                {expandedCategories[category] && (
+                                {expandedCategories[category.name] && (
                                     <div className="quiz-items">
-                                        {mockQuizzesByCategory[category]
+                                        {category.quizzes
                                             .filter((quiz) => {
                                                 if (!searchTerm.trim()) return true;
                                                 return quiz.title.toLowerCase().includes(searchTerm.trim().toLowerCase());
@@ -1115,29 +1211,33 @@ const QuizPage = () => {
                                 </div>
 
                                 <div className="quiz-question">
-                                    <h3>📋 题目</h3>
+                                    <div className="quiz-question-header">
+                                        <h3>📋 题目</h3>
+                                        <button
+                                            type="button"
+                                            className="btn-answer-toggle"
+                                            onClick={handleToggleAnswer}
+                                        >
+                                            {showAnswer ? '隐藏答案' : '显示答案'}
+                                        </button>
+                                    </div>
                                     <p className="question-text">{currentQuiz.question}</p>
                                 </div>
 
-                                {/* 提示按钮 */}
-                                <div className="hints-section">
-                                    <button
-                                        className="btn-hints"
-                                        onClick={() => setShowHints(!showHints)}
-                                    >
-                                        💡 {showHints ? '隐藏提示' : '显示提示'}
-                                    </button>
-                                    {showHints && (
-                                        <div className="hints-content">
-                                            {currentQuiz.hints.map((hint, index) => (
-                                                <div key={index} className="hint-item">
-                                                    <span className="hint-number">{index + 1}</span>
-                                                    <span className="hint-text">{hint}</span>
-                                                </div>
-                                            ))}
+                                {/* 参考答案 */}
+                                {showAnswer && (
+                                    <div className="reference-answer" ref={answerBlockRef}>
+                                        <h3>📖 参考答案</h3>
+                                        <div className="answer-content">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                className="answer-markdown"
+                                            >
+                                                {referenceAnswerContent}
+                                            </ReactMarkdown>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 答题区 */}
@@ -1187,16 +1287,6 @@ const QuizPage = () => {
                                         >
                                             {analysisResult.aiAnalysis}
                                         </ReactMarkdown>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 参考答案 */}
-                            {showAnswer && analysisResult && (
-                                <div className="reference-answer">
-                                    <h3>📖 参考答案</h3>
-                                    <div className="answer-content">
-                                        <pre>{analysisResult.quiz?.referenceAnswer || currentQuiz.referenceAnswer}</pre>
                                     </div>
                                 </div>
                             )}

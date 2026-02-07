@@ -12,6 +12,19 @@ import ReviewPage from './pages/ReviewPage';
 import reviewBanner from './assets/review-banner.png';
 import './App.css';
 
+const PAGE_STORAGE_KEY = 'js-oj:currentPage';
+const VALID_PAGES = new Set(['review', 'coding', 'quiz', 'intro']);
+const getInitialPage = () => {
+  if (typeof window === 'undefined') return 'review';
+  try {
+    const savedPage = window.localStorage.getItem(PAGE_STORAGE_KEY);
+    return VALID_PAGES.has(savedPage) ? savedPage : 'review';
+  } catch (err) {
+    console.warn('读取页面状态失败:', err);
+    return 'review';
+  }
+};
+
 function App() {
   const {
     setProblems,
@@ -33,7 +46,7 @@ function App() {
     logDailyAttempt
   } = useJudgeStore();
 
-  const [currentPage, setCurrentPage] = useState('review');
+  const [currentPage, setCurrentPage] = useState(getInitialPage);
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,6 +61,14 @@ function App() {
 
   // ⭐ 用于强制刷新提交历史
   const [submissionKey, setSubmissionKey] = useState(0);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PAGE_STORAGE_KEY, currentPage);
+    } catch (err) {
+      console.warn('保存页面状态失败:', err);
+    }
+  }, [currentPage]);
 
   // 加载题目列表和记录
   useEffect(() => {
