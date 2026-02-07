@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useJudgeStore } from './store/judgeStore';
 import { fetchProblems, submitCode, runCode, fetchRecords } from './api/judgeApi';
 import ProblemList from './components/ProblemList';
@@ -19,13 +19,18 @@ function App() {
     setJudgeResult,
     clearResult,
     setRecords,
-    updateProblemRecord
+    updateProblemRecord,
+    saveDraft,
+    problems,
+    records
   } = useJudgeStore();
 
   const [currentPage, setCurrentPage] = useState('coding'); // 'coding' 或 'quiz'
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const saveDraftTimerRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // 侧边栏宽度调整相关状态
   const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -67,6 +72,55 @@ function App() {
 
     loadData();
   }, [setProblems, setRecords]);
+
+  const stats = useMemo(() => {
+    let passed = 0;
+    let attempted = 0;
+    let unattempted = 0;
+    problems.forEach((problem) => {
+      const record = records[problem.id];
+      const isPassed = record?.isPassed || false;
+      const totalAttempts = record?.totalAttempts || 0;
+      if (isPassed) passed += 1;
+      else if (totalAttempts > 0) attempted += 1;
+      else unattempted += 1;
+    });
+    const total = problems.length || 0;
+    return { passed, attempted, unattempted, total };
+  }, [problems, records]);
+
+  const filteredProblems = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    return problems
+      .map((problem, index) => ({ problem, index }))
+      .filter(({ problem }) => {
+        if (keyword && !problem.title?.toLowerCase().includes(keyword)) {
+          return false;
+        }
+        return true;
+      });
+  }, [problems, searchTerm]);
+
+  const progressPassed = stats.total ? (stats.passed / stats.total) * 100 : 0;
+  const progressAttempted = stats.total ? (stats.attempted / stats.total) * 100 : 0;
+  const progressUnattempted = Math.max(0, 100 - progressPassed - progressAttempted);
+
+  // 自动保存当前题目的代码草稿
+  useEffect(() => {
+    if (!currentProblem) return;
+    if (saveDraftTimerRef.current) {
+      clearTimeout(saveDraftTimerRef.current);
+    }
+    saveDraftTimerRef.current = setTimeout(() => {
+      saveDraft(currentProblem.id, userCode);
+    }, 500);
+
+    return () => {
+      if (saveDraftTimerRef.current) {
+        clearTimeout(saveDraftTimerRef.current);
+      }
+    };
+  }, [currentProblem?.id, userCode, saveDraft]);
 
   // 处理拖拽调整宽度
   const handleMouseDown = (e) => {
@@ -222,14 +276,39 @@ function App() {
             <QuizPage />
         ) : (
             // 手写题页面
-            <div className="app-container">
+            <div className="coding-page">
+              <section className="coding-topbar">
+                <div className="problem-progress">
+                  <div className="progress-stats">
+                    <span className="progress-item passed">已通过 {stats.passed}</span>
+                    <span className="progress-item attempted">尝试 {stats.attempted}</span>
+                    <span className="progress-item unattempted">未做 {stats.unattempted}</span>
+                    <span className="progress-total">总计 {stats.total}</span>
+                  </div>
+                  <div className="progress-bar">
+                    <span className="progress-segment passed" style={{ width: `${progressPassed}%` }} />
+                    <span className="progress-segment attempted" style={{ width: `${progressAttempted}%` }} />
+                    <span className="progress-segment unattempted" style={{ width: `${progressUnattempted}%` }} />
+                  </div>
+                </div>
+                <div className="problem-filters">
+                  <input
+                    className="problem-search"
+                    type="text"
+                    placeholder="搜索题目..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </section>
+              <div className="app-container">
               {/* 左侧: 题目列表 - 可拖拽调整宽度 */}
               <aside
                   ref={sidebarRef}
                   className="sidebar"
                   style={{ width: `${sidebarWidth}px` }}
               >
-                <ProblemList />
+                <ProblemList items={filteredProblems} />
 
                 {/* 拖拽手柄 */}
                 <div
@@ -308,6 +387,7 @@ function App() {
                 </div>
               </main>
             </div>
+          </div>
         )}
       </div>
   );

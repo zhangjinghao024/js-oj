@@ -97,6 +97,122 @@ body {
   gap: 20px;
 }
 
+.coding-page {
+  flex: 1;
+  width: 100%;
+}
+
+.coding-topbar {
+  max-width: 1400px;
+  margin: 20px auto 0;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.problem-progress {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8f9ff;
+  border: 1px solid #eef0ff;
+}
+
+.progress-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+.progress-item {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.progress-item.passed {
+  background: #e8f9e7;
+  color: #2e7d32;
+}
+
+.progress-item.attempted {
+  background: #fff4db;
+  color: #b26a00;
+}
+
+.progress-item.unattempted {
+  background: #f1f1f1;
+  color: #666;
+}
+
+.progress-total {
+  margin-left: auto;
+  font-weight: 600;
+  color: #333;
+}
+
+.progress-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f1f1f1;
+}
+
+.progress-segment {
+  height: 100%;
+}
+
+.progress-segment.passed {
+  background: #52c41a;
+}
+
+.progress-segment.attempted {
+  background: #faad14;
+}
+
+.progress-segment.unattempted {
+  background: #d9d9d9;
+}
+
+.problem-filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 240px;
+}
+
+.problem-search {
+  width: 240px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.problem-search:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+@media (max-width: 1024px) {
+  .coding-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .problem-filters {
+    justify-content: flex-start;
+  }
+  .problem-search {
+    width: 100%;
+  }
+}
+
 /* 侧边栏 - 支持动态宽度调整 */
 .sidebar {
   /* 删除固定 width: 300px; */
@@ -109,7 +225,8 @@ body {
   height: fit-content;
   max-height: calc(100vh - 140px);
   overflow-y: auto;
-  position: relative; /* 为拖拽手柄定位 */
+  position: sticky; /* 随页面滚动保持可见 */
+  top: 20px;
   flex-shrink: 0; /* 防止被压缩 */
 }
 

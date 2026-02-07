@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useJudgeStore } from '../store/judgeStore';
 import './ProblemList.css';
 
-const ProblemList = () => {
+const ProblemList = ({ items }) => {
     const { problems, currentProblemIndex, selectProblem, records } = useJudgeStore();
     const listRef = useRef(null);
     const itemRefs = useRef([]);
@@ -13,6 +13,7 @@ const ProblemList = () => {
             target.scrollIntoView({ block: 'center', behavior: 'auto' });
         }
     }, [currentProblemIndex, problems.length]);
+    const listItems = items || problems.map((problem, index) => ({ problem, index }));
 
     const getDifficultyColor = (difficulty) => {
         switch (difficulty?.toLowerCase()) {
@@ -31,7 +32,10 @@ const ProblemList = () => {
         <div className="problem-list" ref={listRef}>
             <h3 className="problem-list-title">题目列表</h3>
             <div className="problem-items">
-                {problems.map((problem, index) => {
+                {listItems.length === 0 && (
+                    <div className="problem-empty">没有匹配的题目</div>
+                )}
+                {listItems.map(({ problem, index }) => {
                     const record = records[problem.id];
                     const isPassed = record?.isPassed || false;
                     const passedCount = record?.passedCount || 0;

@@ -20,6 +20,15 @@
   gap: 8px;
 }
 
+.problem-empty {
+  padding: 16px;
+  text-align: center;
+  color: #888;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
 .problem-item {
   padding: 12px 16px;
   border: 1px solid #e8e8e8;
