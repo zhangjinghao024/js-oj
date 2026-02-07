@@ -95,7 +95,7 @@ const SubmissionsPage = () => {
                     >
                         <option value="all">全部类型</option>
                         <option value="code">💻 代码题</option>
-                        <option value="quiz">📋 问答题</option>
+                        <option value="quiz">📋 八股文</option>
                     </select>
 
                     <select
@@ -191,7 +191,7 @@ const SubmissionsPage = () => {
                                 <h3>📋 基本信息</h3>
                                 <div className="detail-grid">
                                     <div><strong>题目:</strong> {selectedSubmission.problem_title}</div>
-                                    <div><strong>类型:</strong> {selectedSubmission.problem_type === 'code' ? '代码题' : '问答题'}</div>
+                                    <div><strong>类型:</strong> {selectedSubmission.problem_type === 'code' ? '代码题' : '八股文'}</div>
                                     <div><strong>状态:</strong> {getStatusBadge(selectedSubmission.status, selectedSubmission.is_correct)}</div>
                                     <div><strong>提交时间:</strong> {formatDate(selectedSubmission.submitted_at)}</div>
                                 </div>
@@ -224,7 +224,7 @@ const SubmissionsPage = () => {
                                 </>
                             )}
 
-                            {/* 问答题详情 */}
+                            {/* 八股文详情 */}
                             {selectedSubmission.problem_type === 'quiz' && (
                                 <>
                                     <div className="detail-section">

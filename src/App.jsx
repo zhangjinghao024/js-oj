@@ -7,6 +7,8 @@ import CodeEditor from './components/CodeEditor';
 import TestResult from './components/TestResult';
 import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
+import LeetCodePage from './pages/LeetCodePage';
+import ProjectIntroPage from './pages/ProjectIntroPage';
 import './App.css';
 
 function App() {
@@ -25,7 +27,7 @@ function App() {
     records
   } = useJudgeStore();
 
-  const [currentPage, setCurrentPage] = useState('coding'); // 'coding' 或 'quiz'
+  const [currentPage, setCurrentPage] = useState('coding');
   const [activeTab, setActiveTab] = useState('description');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -263,16 +265,28 @@ function App() {
             <h1>111</h1>
             <nav className="header-nav">
               <button
-                  className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
-                  onClick={() => setCurrentPage('coding')}
+                className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('coding')}
               >
                 💻 手写题
               </button>
               <button
-                  className={`nav-btn ${currentPage === 'quiz' ? 'active' : ''}`}
-                  onClick={() => setCurrentPage('quiz')}
+                className={`nav-btn ${currentPage === 'quiz' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('quiz')}
               >
-                📝 问答题
+                📝 八股文
+              </button>
+              <button
+                className={`nav-btn ${currentPage === 'leetcode' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('leetcode')}
+              >
+                ✅ LeetCode 记录
+              </button>
+              <button
+                className={`nav-btn ${currentPage === 'intro' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('intro')}
+              >
+                📌 项目介绍
               </button>
             </nav>
           </div>
@@ -281,11 +295,13 @@ function App() {
 
         {/* 根据当前页面渲染不同内容 */}
         {currentPage === 'quiz' ? (
-            // 问答题页面
-            <QuizPage />
+          <QuizPage />
+        ) : currentPage === 'leetcode' ? (
+          <LeetCodePage />
+        ) : currentPage === 'intro' ? (
+          <ProjectIntroPage />
         ) : (
-            // 手写题页面
-            <div className="coding-page">
+          <div className="coding-page">
               <section className="coding-topbar">
                 <div className="problem-progress">
                   <div className="progress-stats">
