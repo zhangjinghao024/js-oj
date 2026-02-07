@@ -29,7 +29,7 @@ const TestResult = () => {
     return (
         <div className="test-result">
           <div className="empty-result">
-            <p>点击【运行】测试示例，或【提交】进行 AI 分析</p>
+            <p>点击【提交】进行 AI 分析</p>
           </div>
         </div>
     );

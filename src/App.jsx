@@ -230,11 +230,20 @@ function App() {
   };
 
   // 重置代码
+  const [showResetModal, setShowResetModal] = useState(false);
+
   const handleReset = () => {
-    if (confirm('确定要重置代码吗?')) {
-      setUserCode(currentProblem?.template || '');
-      clearResult();
-    }
+    setShowResetModal(true);
+  };
+
+  const handleConfirmReset = () => {
+    setUserCode(currentProblem?.template || '');
+    clearResult();
+    setShowResetModal(false);
+  };
+
+  const handleCancelReset = () => {
+    setShowResetModal(false);
   };
 
   if (loading) {
@@ -364,13 +373,6 @@ function App() {
                         重置
                       </button>
                       <button
-                          className="btn btn-primary"
-                          onClick={handleRunCode}
-                          title="运行示例测试用例"
-                      >
-                        运行示例
-                      </button>
-                      <button
                           className="btn btn-success"
                           onClick={handleSubmit}
                           title="提交代码给 AI 分析"
@@ -388,6 +390,23 @@ function App() {
               </main>
             </div>
           </div>
+        )}
+        {showResetModal && (
+            <div className="reset-modal-overlay" onClick={handleCancelReset}>
+              <div className="reset-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="reset-modal-header">
+                  <h3>确认重置</h3>
+                  <button className="reset-modal-close" onClick={handleCancelReset}>✕</button>
+                </div>
+                <div className="reset-modal-body">
+                  <p>确定要重置当前代码吗？重置后将恢复为题目模板。</p>
+                </div>
+                <div className="reset-modal-footer">
+                  <button className="reset-btn cancel" onClick={handleCancelReset}>取消</button>
+                  <button className="reset-btn confirm" onClick={handleConfirmReset}>确定重置</button>
+                </div>
+              </div>
+            </div>
         )}
       </div>
   );

@@ -200,6 +200,118 @@ body {
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
+/* 重置弹窗 */
+.reset-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+  backdrop-filter: blur(2px);
+}
+
+.reset-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+  animation: resetModalPop 0.18s ease-out;
+}
+
+.reset-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f5f7ff, #ffffff);
+  border-bottom: 1px solid #eef1f6;
+}
+
+.reset-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.reset-modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  color: #6b7280;
+  transition: background 0.2s;
+}
+
+.reset-modal-close:hover {
+  background: #f1f5f9;
+}
+
+.reset-modal-body {
+  padding: 18px 20px 10px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reset-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+}
+
+.reset-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn.cancel {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.reset-btn.cancel:hover {
+  background: #eef2f7;
+  border-color: #d8e0ea;
+}
+
+.reset-btn.confirm {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+  box-shadow: 0 6px 14px rgba(239, 68, 68, 0.25);
+}
+
+.reset-btn.confirm:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+@keyframes resetModalPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 1024px) {
   .coding-topbar {
     flex-direction: column;
