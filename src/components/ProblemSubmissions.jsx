@@ -36,9 +36,42 @@ const ProblemSubmissions = ({ problemId }) => {
         }
     };
 
+    const getResultContent = (submission) => {
+        if (!submission) return null;
+        const raw =
+            submission.resultContent ??
+            submission.result_content ??
+            submission.aiAnalysis ??
+            submission.ai_analysis ??
+            submission.result ??
+            submission.message ??
+            submission.output;
+
+        if (raw === undefined || raw === null) return null;
+        if (typeof raw === 'string') {
+            const trimmed = raw.trim();
+            return trimmed.length > 0 ? trimmed : null;
+        }
+        try {
+            return JSON.stringify(raw, null, 2);
+        } catch {
+            return String(raw);
+        }
+    };
+
     // 查看详情
-    const viewDetails = (submission) => {
+    const viewDetails = async (submission) => {
         setSelectedSubmission(submission);
+        if (!submission?.id) return;
+        try {
+            const response = await axios.get(`${API_BASE_URL}/submissions/${submission.id}`);
+            const detail = response.data?.data || response.data;
+            if (detail) {
+                setSelectedSubmission({ ...submission, ...detail });
+            }
+        } catch (error) {
+            console.error('获取提交详情失败:', error);
+        }
     };
 
     // 关闭详情
@@ -80,6 +113,15 @@ const ProblemSubmissions = ({ problemId }) => {
             return <span className="status-badge warning">⏱️ 超时</span>;
         } else {
             return <span className="status-badge default">{status}</span>;
+        }
+    };
+
+    const handleCopyCode = async (code) => {
+        if (!code) return;
+        try {
+            await navigator.clipboard.writeText(code);
+        } catch (err) {
+            console.error('复制失败:', err);
         }
     };
 
@@ -140,7 +182,9 @@ const ProblemSubmissions = ({ problemId }) => {
             </div>
 
             {/* 详情弹窗 */}
-            {selectedSubmission && (
+            {selectedSubmission && (() => {
+                const resultContent = getResultContent(selectedSubmission);
+                return (
                 <div className="modal-overlay" onClick={closeDetails}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
@@ -171,11 +215,29 @@ const ProblemSubmissions = ({ problemId }) => {
 
                             {/* 提交代码 */}
                             <div className="detail-section">
-                                <h4>提交代码</h4>
+                                <div className="detail-header">
+                                    <h4>提交代码</h4>
+                                    <button
+                                        className="btn-copy"
+                                        onClick={() => handleCopyCode(selectedSubmission.submittedCode)}
+                                    >
+                                        一键复制
+                                    </button>
+                                </div>
                                 <pre className="code-block">
                                     <code>{selectedSubmission.submittedCode}</code>
                                 </pre>
                             </div>
+
+                            {/* 结果内容 */}
+                            {resultContent && (
+                                <div className="detail-section">
+                                    <h4>结果内容</h4>
+                                    <pre className="result-box">
+                                        {resultContent}
+                                    </pre>
+                                </div>
+                            )}
 
                             {/* 错误信息 */}
                             {selectedSubmission.errorMessage && (
@@ -189,7 +251,8 @@ const ProblemSubmissions = ({ problemId }) => {
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 };
