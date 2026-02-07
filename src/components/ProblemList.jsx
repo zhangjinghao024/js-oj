@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useJudgeStore } from '../store/judgeStore';
 import './ProblemList.css';
 
 const ProblemList = () => {
     const { problems, currentProblemIndex, selectProblem, records } = useJudgeStore();
+    const listRef = useRef(null);
+    const itemRefs = useRef([]);
+
+    useEffect(() => {
+        const target = itemRefs.current[currentProblemIndex];
+        if (target && listRef.current) {
+            target.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+    }, [currentProblemIndex, problems.length]);
 
     const getDifficultyColor = (difficulty) => {
         switch (difficulty?.toLowerCase()) {
@@ -19,7 +28,7 @@ const ProblemList = () => {
     };
 
     return (
-        <div className="problem-list">
+        <div className="problem-list" ref={listRef}>
             <h3 className="problem-list-title">题目列表</h3>
             <div className="problem-items">
                 {problems.map((problem, index) => {
@@ -34,6 +43,9 @@ const ProblemList = () => {
                             key={problem.id}
                             className={`problem-item ${currentProblemIndex === index ? 'active' : ''} ${isPassed ? 'passed' : hasAttempted ? 'attempted' : ''}`}
                             onClick={() => selectProblem(index)}
+                            ref={(el) => {
+                                itemRefs.current[index] = el;
+                            }}
                         >
                             <div className="problem-info">
                                 <span className="problem-number">#{index + 1}</span>
