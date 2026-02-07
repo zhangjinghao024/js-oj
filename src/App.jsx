@@ -7,7 +7,6 @@ import CodeEditor from './components/CodeEditor';
 import TestResult from './components/TestResult';
 import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
-import LeetCodePage from './pages/LeetCodePage';
 import ProjectIntroPage from './pages/ProjectIntroPage';
 import './App.css';
 
@@ -277,8 +276,8 @@ function App() {
                 📝 八股文
               </button>
               <button
-                className={`nav-btn ${currentPage === 'leetcode' ? 'active' : ''}`}
-                onClick={() => setCurrentPage('leetcode')}
+                className="nav-btn"
+                onClick={() => window.open('https://leetcode.cn/studyplan/top-100-liked/', '_blank', 'noopener,noreferrer')}
               >
                 ✅ LeetCode 记录
               </button>
@@ -296,8 +295,6 @@ function App() {
         {/* 根据当前页面渲染不同内容 */}
         {currentPage === 'quiz' ? (
           <QuizPage />
-        ) : currentPage === 'leetcode' ? (
-          <LeetCodePage />
         ) : currentPage === 'intro' ? (
           <ProjectIntroPage />
         ) : (

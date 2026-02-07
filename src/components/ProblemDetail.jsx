@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useJudgeStore } from '../store/judgeStore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import './ProblemDetail.css';
 
 const ProblemDetail = () => {
@@ -36,8 +39,10 @@ const ProblemDetail = () => {
           </span>
                 </div>
                 {isDescriptionExpanded && (
-                    <div className="problem-description">
-                        {currentProblem.description}
+                    <div className="problem-description markdown-body">
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                            {currentProblem.description || ''}
+                        </ReactMarkdown>
                     </div>
                 )}
             </div>

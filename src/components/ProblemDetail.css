@@ -109,9 +109,53 @@
   color: #555;
   line-height: 1.8;
   font-size: 14px;
-  white-space: pre-wrap;
   word-wrap: break-word;
   animation: fadeIn 0.3s ease;
+}
+
+.problem-description p {
+  margin: 0 0 12px;
+}
+
+.problem-description ul,
+.problem-description ol {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+}
+
+.problem-description li {
+  margin-bottom: 6px;
+}
+
+.problem-description code {
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+}
+
+.problem-description pre {
+  background-color: #f7f7f7;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0 12px;
+}
+
+.problem-description pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+}
+
+.problem-description a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.problem-description a:hover {
+  text-decoration: underline;
 }
 
 @keyframes fadeIn {
