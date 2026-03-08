@@ -185,7 +185,7 @@
 .modal-content {
     background: white;
     border-radius: 12px;
-    max-width: 800px;
+    max-width: 920px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
@@ -294,21 +294,50 @@
     min-width: 80px;
 }
 
-/* 代码块 */
-.code-block {
-    background: #1e1e1e;
-    color: #d4d4d4;
-    padding: 16px;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 13px;
-    line-height: 1.6;
-    margin: 0;
+/* 代码展示面板 */
+.submission-code-panel {
+    border: 1px solid #d7deea;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0f172a;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
 }
 
-.code-block code {
-    font-family: inherit;
+.submission-code-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.submission-code-lang {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #dbeafe;
+    background: rgba(37, 99, 235, 0.4);
+    border: 1px solid rgba(147, 197, 253, 0.45);
+}
+
+.submission-code-meta {
+    font-size: 12px;
+    color: #cbd5e1;
+}
+
+.submission-code-editor {
+    background: #0b1220;
+}
+
+.submission-code-editor .monaco-editor,
+.submission-code-editor .overflow-guard {
+    border-radius: 0 0 10px 10px;
 }
 
 /* 结果内容 */

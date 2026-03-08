@@ -234,6 +234,41 @@ export const useJudgeStore = create((set, get) => ({
     return { reviewQueue: nextQueue };
   }),
 
+  // 取消复习标记
+  resetReviewed: (type, id) => set((state) => {
+    const queue = state.reviewQueue || { code: {}, quiz: {}, leetcode: {} };
+    const bucket = queue[type] || {};
+    const existing = bucket[id];
+    if (!existing) return { reviewQueue: queue };
+    const nextQueue = {
+      ...queue,
+      [type]: {
+        ...bucket,
+        [id]: {
+          ...existing,
+          lastReviewedAt: null
+        }
+      }
+    };
+    writeReviewQueue(nextQueue);
+    return { reviewQueue: nextQueue };
+  }),
+
+  // 从复习队列移除
+  removeFromReviewQueue: (type, id) => set((state) => {
+    const queue = state.reviewQueue || { code: {}, quiz: {}, leetcode: {} };
+    const bucket = queue[type] || {};
+    if (!bucket[id]) return { reviewQueue: queue };
+    const nextBucket = { ...bucket };
+    delete nextBucket[id];
+    const nextQueue = {
+      ...queue,
+      [type]: nextBucket
+    };
+    writeReviewQueue(nextQueue);
+    return { reviewQueue: nextQueue };
+  }),
+
   // 获取复习状态
   getReviewStatus: (type, id) => {
     const queue = get().reviewQueue || { code: {}, quiz: {}, leetcode: {} };

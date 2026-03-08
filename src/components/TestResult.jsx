@@ -4,6 +4,23 @@ import remarkGfm from 'remark-gfm';
 import { useJudgeStore } from '../store/judgeStore';
 import './TestResult.css';
 
+const getCodeTextFromPreNode = (node) => {
+  const codeNode = node?.children?.find((child) => child?.tagName === 'code');
+  if (!codeNode || !Array.isArray(codeNode.children)) return '';
+  return codeNode.children
+    .map((child) => (typeof child?.value === 'string' ? child.value : ''))
+    .join('')
+    .replace(/\n+$/, '')
+    .trim();
+};
+
+const shouldRenderCompactCodeChip = (codeText) => {
+  if (!codeText) return false;
+  if (codeText.includes('\n')) return false;
+  if (codeText.length > 60) return false;
+  return true;
+};
+
 const TestResult = () => {
   const { judgeResult, testResults, isJudging } = useJudgeStore();
 
@@ -106,6 +123,13 @@ const TestResult = () => {
                         li: ({node, ...props}) => <li className="ai-li" {...props} />,
                         p: ({node, ...props}) => <p className="ai-p" {...props} />,
                         strong: ({node, ...props}) => <strong className="ai-strong" {...props} />,
+                        pre: ({ node, children, ...props }) => {
+                          const codeText = getCodeTextFromPreNode(node);
+                          if (shouldRenderCompactCodeChip(codeText)) {
+                            return <code className="ai-code-chip">{codeText}</code>;
+                          }
+                          return <pre className="ai-pre-block" {...props}>{children}</pre>;
+                        },
                         code: ({node, inline, ...props}) =>
                             inline ?
                                 <code className="ai-code-inline" {...props} /> :

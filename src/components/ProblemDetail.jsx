@@ -16,6 +16,8 @@ const ProblemDetail = () => {
     const isInReviewQueue = currentProblem
       ? Boolean(reviewQueue?.code?.[currentProblem.id])
       : false;
+    const normalizedTitle = String(currentProblem?.title || '').toLowerCase();
+    const isPromiseHighlightProblem = normalizedTitle.includes('promise');
 
     if (!currentProblem) {
         return (
@@ -56,7 +58,7 @@ const ProblemDetail = () => {
           </span>
                 </div>
                 {isDescriptionExpanded && (
-                    <div className="problem-description markdown-body">
+                    <div className={`problem-description markdown-body${isPromiseHighlightProblem ? ' promise-highlight-description' : ''}`}>
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                             {currentProblem.description || ''}
                         </ReactMarkdown>

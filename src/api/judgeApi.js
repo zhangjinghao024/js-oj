@@ -126,4 +126,18 @@ export const speechToText = async (audioData) => {
   return response.data;
 };
 
+// 获取项目介绍问答（项目级持久化）
+export const fetchProjectIntroQa = async () => {
+  const response = await api.get('/project-intro/qa');
+  return response.data;
+};
+
+// 保存项目介绍问答（项目级持久化）
+export const saveProjectIntroQa = async (qaMap) => {
+  const response = await api.put('/project-intro/qa', {
+    qaMap
+  });
+  return response.data;
+};
+
 export default api;

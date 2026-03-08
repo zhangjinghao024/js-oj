@@ -53,7 +53,12 @@ const ProblemList = ({ items }) => {
                         >
                             <div className="problem-info">
                                 <span className="problem-number">#{index + 1}</span>
-                                <span className="problem-name">{problem.title}</span>
+                                <span className="problem-title-group">
+                                    <span className="problem-name">{problem.title}</span>
+                                    {problem.listTag && (
+                                        <span className="problem-list-tag">{problem.listTag}</span>
+                                    )}
+                                </span>
 
                                 {/* 已通过 */}
                                 {isPassed && (

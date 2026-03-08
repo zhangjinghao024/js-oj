@@ -716,56 +716,317 @@ Object.prototype.toString.call(function(){}) // '[object Function]'
             question: `请谈谈你对 React 和 Vue 的理解，可以从使用方式、底层实现、生态和社区这几个方面展开。`,
             tags: ['React', 'Vue', '框架对比'],
             points: 15,
-            referenceAnswer: `使用上：
-React用Hooks（useState、useEffect）管理状态和副作用，用JSX描述UI，本质就是JavaScript。
-Vue 3用Composition API在setup里写逻辑，用模板语法（v-if、v-for）描述UI，更接近HTML。
+            referenceAnswer: `## 使用上
+- **React**：用 Hooks（useState、useEffect）管理状态和副作用，用 JSX 描述 UI，本质就是 JavaScript。
+- **Vue 3**：用 Composition API 在 setup 里写逻辑，用模板语法（v-if、v-for）描述 UI，更接近 HTML。
 
-底层实现：
-Vue基于Proxy实现响应式，数据变化时精确追踪依赖，只更新相关组件。
-React通过setState手动触发更新，会重新执行组件函数生成新虚拟DOM，然后Diff对比后更新真实DOM。
+## 底层实现
+- **Vue**：基于 Proxy 实现响应式，数据变化时精确追踪依赖，只更新相关组件。
+- **React**：通过 setState 手动触发更新，会重新执行组件函数生成新虚拟 DOM，然后 Diff 对比后更新真实 DOM。
 
-生态：
-Vue官方维护核心生态，像Vue Router、Pinia都是官方的，开箱即用。
-React是社区驱动，React Router、Redux这些都是社区维护，选择多但需要自己搭配。
+## 生态
+- **Vue**：官方维护核心生态，像 Vue Router、Pinia 都是官方的，开箱即用。
+- **React**：社区驱动，React Router、Redux 这些都是社区维护，选择多但需要自己搭配。
 
-总的来说，Vue上手快、整合度高，React更灵活、生态更强大。我两个都用过，会根据项目复杂度和团队情况选择。`,
+## 总结
+Vue 上手快、整合度高，React 更灵活、生态更强大。我两个都用过，会根据项目复杂度和团队情况选择`,
             hints: ['使用方式差异', '响应式与渲染机制', '生态与社区对比']
         },
         {
             id: 'react2',
-            title: 'useEffect 的使用场景',
+            title: 'react 是如何实现状态更新的（react渲染流程）',
             difficulty: 'Medium',
             category: 'React',
-            question: `请说明 useEffect 的主要使用场景和注意事项。`,
-            tags: ['useEffect', 'Hooks', '副作用'],
+            question: `请详细说明 React 是如何实现状态更新的，并结合渲染流程进行说明。`,
+            tags: ['React', '状态更新', '渲染流程'],
             points: 15,
-            referenceAnswer: `**使用场景：**
-1. 数据获取
-2. 订阅/取消订阅
-3. DOM 操作
-4. 定时器
+            referenceAnswer: `
 
-**注意事项：**
-1. 依赖数组的正确使用
-2. 清理函数的返回
-3. 避免无限循环`,
-            hints: ['处理副作用', '依赖数组', '清理函数']
+## 1. 触发更新
+- 通过 \`setState\` 或 \`useState\` 触发更新
+- React 给组件打上标记，表示需要重新渲染
+
+## 2. Render 阶段（可中断）
+- 重新执行组件函数或 \`render\` 方法，生成新的 JSX
+
+### 两个核心角色：
+- **Scheduler（调度器）**：按优先级排序任务，优先级高的先执行
+- **Reconciler（协调器）**：
+  - 构建新的 Fiber 树
+  - Diff 算法对比新旧节点的 tag 和 key
+  - 标记 DOM 操作（增、删、改、移动）
+  - 收集所有变更形成 effectList
+- **特点**：可中断，根据优先级调度
+
+## 3. Commit 阶段（不可中断）
+- **Renderer（渲染器）**：将 effectList 同步到真实 DOM
+- 必须一次性完成，不能中断
+
+## 总结
+触发更新 → Diff 找出变化 → 更新 DOM`,
+            hints: ['更新调度', '调和阶段', '提交阶段']
         },
         {
             id: 'react3',
-            title: 'React 组件通信方式',
+            title: 'useState 原理',
             difficulty: 'Medium',
             category: 'React',
-            question: `请列举 React 中常见的组件通信方式。`,
+            question: `请说明 useState 的实现原理，包括 Hook 链表、更新队列和闭包现象。`,
+            tags: ['useState', 'Hooks', '状态管理'],
+            points: 15,
+            referenceAnswer: `\`\`\`javascript
+function App() {
+  if (someCondition) {
+    const [name, setName] = useState('小明')  // 可能不执行
+  }
+  const [age, setAge] = useState(18)
+}
+\`\`\`
+
+当 \`someCondition\` 为 true 时，调用顺序是 hook1 → hook2，没问题。
+
+但当 \`someCondition\` 为 false 时，第一个 useState 被跳过了，age 的 useState 变成了第1次调用，React 会把 hook1（存的是 name）的值给 age，**对应关系全乱了**。
+
+> 简单记：**React 没有"名字"来识别 hook，只有"顺序"，所以顺序不能变。**
+
+---
+
+## 2. 两个阶段的通俗版解释
+
+我用一个生活比喻来说：
+
+### Mount（首次渲染）—— 相当于"建档"
+
+你第一次去医院，护士给你建一个档案：
+\`\`\`
+你的fiber（病历本）
+  └── memoizedState（第一页）
+        hook1: { memoizedState: '小明', queue: [], next: → hook2 }
+        hook2: { memoizedState: 18,     queue: [], next: null }
+\`\`\`
+
+做了什么事：
+1. 创建 hook 对象
+2. 把初始值（\`'小明'\`、\`18\`）写进去
+3. 给每个 hook 准备一个空的更新队列（queue）
+4. hook 之间用 next 串成链表
+
+### Update（更新）—— 相当于"改档案"
+
+你调用了 \`setAge(19)\`，发生了什么：
+
+**第一步：排队**
+\`\`\`
+setAge(19) 被调用
+  → 创建一个 update 对象：{ action: 19 }
+  → 塞进 hook2 的 queue 里
+  → 通知 React："这个组件需要重新渲染"
+\`\`\`
+
+**第二步：重新渲染时处理队列**
+\`\`\`
+组件函数重新执行
+  → 执行到第2个 useState
+  → React 发现 hook2 的 queue 里有一个 update
+  → 取出来计算：新 state = 19
+  → 更新 hook2.memoizedState = 19
+  → 返回 [19, setAge]
+  
+  话术：useState 的原理可以从 mount 和 update 两个阶段来说。
+Mount 阶段： 组件首次渲染时，React 会为每个 useState 调用创建一个 hook 对象，
+挂载到当前 fiber 的 memoizedState 上。多个 hook 之间通过 next 指针形成单向链表——这也是为什么 hooks 不能写在条件语句里，
+因为 React 靠调用顺序来匹配 hook。初始值存到 hook.memoizedState，同时初始化一个 update queue 挂到 hook.queue 上。
+Update 阶段： 当调用 setState 时，React 创建一个 update 对象，加入 hook.queue.pending，这个队列是环形链表结构。
+然后调用 scheduleUpdateOnFiber 触发调度。到组件重新渲染时，React 会遍历这个环形链表，依次计算每个 update，最终得到新的 state。
+如果 setState 传的是函数，就把上一次的 state 作为参数传入；如果是值，就直接替换。
+还有一个优化点：React 有批量更新（batching） 机制，在同一个事件回调里多次 setState 不会触发多次渲染，而是合并到一次更新中。
+\`\`\``,
+            hints: ['Hook 顺序', '更新队列', '闭包陷阱']
+        },
+        {
+            id: 'react4',
+            title: 'useEffect 和 useLayoutEffect',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请对比 useEffect 和 useLayoutEffect 的执行时机、使用场景和注意事项。`,
+            tags: ['useEffect', 'useLayoutEffect', '副作用'],
+            points: 15,
+            referenceAnswer: `## 1. useEffect 怎么模拟类组件生命周期？
+useEffect 通过**第二个参数（依赖数组）**来控制执行时机：
+
+- 空数组 [] -> 相当于 componentDidMount，只在首次渲染后执行一次
+- 传入依赖 [a, b] -> 相当于 componentDidMount + componentDidUpdate，首次渲染和依赖变化时都会执行
+- 不传第二个参数 -> 每次渲染后都执行
+- 返回一个清理函数 -> 相当于 componentWillUnmount，会在组件卸载前或下次 effect 执行前调用，用来清除定时器、取消订阅等
+
+## 2. 什么是副作用？
+副作用就是组件渲染过程之外的操作，比如数据请求、订阅、手动操作 DOM、设置定时器这些。React 函数组件里通过 useEffect 来处理副作用。
+
+## 3. useEffect 和 useLayoutEffect 的区别？
+这个要从 React 的渲染流程说起。React 更新组件分两步：
+
+第一步：在内存中算出新的 DOM
+第二步：浏览器把 DOM 绘制到屏幕上
+
+\`\`\`
+React 算出新 DOM
+    ↓
+【useLayoutEffect 在这里执行】← 用户还没看到画面
+    ↓
+浏览器绘制到屏幕（用户看到了）
+    ↓
+【useEffect 在这里执行】← 用户已经看到画面了
+\`\`\`
+
+- useLayoutEffect：插在这两步之间，DOM 算好了但还没画到屏幕上，同步执行，会阻塞浏览器渲染
+- useEffect：在浏览器绘制完成之后异步执行，不会阻塞渲染
+
+### 实际场景举例
+如果我在 useEffect 里修改一个元素的位置，用户会先看到元素在原位置闪一下，再跳到新位置，因为浏览器已经画过一次了。换成 useLayoutEffect，浏览器还没画就已经改好了，用户直接看到最终结果，不会闪烁。
+
+### 一句话总结
+平时用 useEffect 就够了，只有遇到画面闪烁这类 DOM 布局相关的问题时才换成 useLayoutEffect。`,
+            hints: ['执行时机', '绘制前后', '场景选择']
+        },
+        {
+            id: 'react5',
+            title: 'react 组件间通信',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请列举 React 常见的组件通信方式，并说明各自适用场景。`,
             tags: ['组件通信', 'props', 'context'],
             points: 15,
-            referenceAnswer: `**通信方式：**
-1. Props（父→子）
-2. 回调函数（子→父）
-3. Context API（跨层级）
-4. Redux/Zustand（全局状态）
-5. Event Bus（发布订阅）`,
-            hints: ['props 和回调', 'Context API', '状态管理库']
+            referenceAnswer: `- props
+- redux
+- useContext
+- cookie,localstorage, sessioStorage
+
+子组件如何向父组件传值？
+
+props 里面穿一个 setState 函数，子组件拿着这个 setState 去更新 state，间接达到一个
+
+子传父的作用.`,
+            hints: ['props', 'Context', '状态管理库']
+        },
+        {
+            id: 'react6',
+            title: 'react 合成时间的理解（事件处理、批量更新）',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请说明 React 合成事件机制，以及事件处理中的批量更新行为。`,
+            tags: ['合成事件', '事件处理', '批量更新'],
+            points: 15,
+            referenceAnswer: `
+
+## 什么是合成事件
+
+React 不直接监听子元素的事件,而是监听父元素的事件。为了解决浏览器兼容问题,React 把 DOM 原生事件封装为合成事件,原来事件是小写的,合成事件加上了 \`on\` 用驼峰命名法。
+
+## 事件委托机制
+
+React 利用事件委托,原本需要绑定在**子元素**的事件委托给**父元素**,让父元素负责事件监听和处理。
+
+- **React 16**: 事件绑定到 \`document\` 上
+- **React 17**: 事件绑定到 \`root\` 组件上,有利于多个 React 版本共存
+
+## DOM 事件流三个阶段
+
+1. **事件捕获阶段**: 事件从最外层(document)向下传播到目标元素
+2. **目标阶段**: 事件到达实际触发事件的元素
+3. **事件冒泡阶段**: 事件从目标元素向上冒泡回 document
+
+## 一句话总结
+
+React 合成事件本质上做了两件事:一是封装原生事件解决浏览器兼容问题,二是利用事件委托统一在顶层节点管理所有事件,减少了事件监听器的数量,提升了性能。`,
+            hints: ['事件委托', '批量更新', '自动批处理']
+        },
+        {
+            id: 'react7',
+            title: 'diff 算法',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请解释 React Diff 算法的核心思想，以及它如何降低比对复杂度。`,
+            tags: ['Diff', '调和', '虚拟DOM'],
+            points: 15,
+            referenceAnswer: `可从同层比较、key 的作用、不同类型节点处理策略展开。`,
+            hints: ['同层比较', 'key', '复杂度优化']
+        },
+        {
+            id: 'react8',
+            title: 'react 生命周期',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请说明 React 生命周期（以 class 组件为主），并补充函数组件对应方案。`,
+            tags: ['生命周期', 'class组件', '函数组件'],
+            points: 15,
+            referenceAnswer: `请按挂载、更新、卸载阶段说明，并补充 useEffect 的映射关系。`,
+            hints: ['挂载更新卸载', '生命周期方法', 'Hooks 对应']
+        },
+        {
+            id: 'react9',
+            title: 'class 组件和 function 组件的理解',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请对比 class 组件与 function 组件在状态、副作用、复用和心智模型上的差异。`,
+            tags: ['class组件', 'function组件', 'Hooks'],
+            points: 15,
+            referenceAnswer: `请结合历史演进说明为何函数组件成为主流。`,
+            hints: ['状态管理方式', '逻辑复用', '代码组织']
+        },
+        {
+            id: 'react10',
+            title: 'jsx的理解',
+            difficulty: 'Easy',
+            category: 'React',
+            question: `请说明你对 JSX 的理解，包括本质、语法特点和编译过程。`,
+            tags: ['JSX', '编译', '语法糖'],
+            points: 10,
+            referenceAnswer: `可从 JSX 到 React.createElement/JSX Runtime 的转换过程说明。`,
+            hints: ['语法糖', '编译转换', '表达式插值']
+        },
+        {
+            id: 'react11',
+            title: 'react 优化',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请说明 React 常见性能优化手段，并分别给出适用场景。`,
+            tags: ['性能优化', 'memo', '渲染优化'],
+            points: 15,
+            referenceAnswer: `可从减少重渲染、长列表优化、代码分割、缓存计算等方面展开。`,
+            hints: ['memo/useMemo/useCallback', '虚拟列表', '懒加载']
+        },
+        {
+            id: 'react12',
+            title: '什么是 fiber 树',
+            difficulty: 'Medium',
+            category: 'React',
+            question: `请解释什么是 Fiber 树，它和传统递归调和有什么区别。`,
+            tags: ['Fiber', '调和', '调度'],
+            points: 15,
+            referenceAnswer: `请描述 Fiber 节点结构、双缓存树（current/workInProgress）等核心概念。`,
+            hints: ['Fiber 节点', '双缓存树', '可中断']
+        },
+        {
+            id: 'react13',
+            title: 'fiber 有特性，优点（并发？）',
+            difficulty: 'Hard',
+            category: 'React',
+            question: `请说明 Fiber 架构的主要特性和优势，并解释它与并发能力的关系。`,
+            tags: ['Fiber', '并发', '优先级调度'],
+            points: 20,
+            referenceAnswer: `可从可中断渲染、任务优先级、时间切片与响应性提升角度说明。`,
+            hints: ['可中断', '优先级', '并发渲染']
+        },
+        {
+            id: 'react14',
+            title: 'react 如何实现增量渲染',
+            difficulty: 'Hard',
+            category: 'React',
+            question: `请解释 React 如何实现增量渲染，以及这一能力在用户体验上的价值。`,
+            tags: ['增量渲染', 'Fiber', '调度'],
+            points: 20,
+            referenceAnswer: `请结合时间切片、任务拆分、可恢复渲染等机制作答。`,
+            hints: ['时间切片', '任务拆分', '渲染可恢复']
         }
     ],
     'RN': [
@@ -854,6 +1115,7 @@ const QuizPage = () => {
     // AI 分析相关状态
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState(null);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     const filteredQuizzes = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
@@ -1102,8 +1364,16 @@ const QuizPage = () => {
                 </div>
             </section>
             <div className="quiz-container">
+                {/* 移动端侧边栏切换按钮（仅在小屏显示） */}
+                <button
+                    className="mobile-sidebar-toggle"
+                    onClick={() => setIsMobileSidebarOpen(prev => !prev)}
+                >
+                    {isMobileSidebarOpen ? '✕ 收起题目列表' : '📚 展开题目列表'}
+                </button>
+
                 {/* 左侧：分类题目列表 */}
-                <aside className="quiz-sidebar">
+                <aside className={`quiz-sidebar${isMobileSidebarOpen ? ' mobile-open' : ''}`}>
                     <h3 className="quiz-list-title">📚 题目分类</h3>
                     <div className="quiz-categories">
                         {categoryList.map(category => (
@@ -1140,7 +1410,7 @@ const QuizPage = () => {
                                                     <div
                                                         key={quiz.id}
                                                         className={`quiz-item ${currentQuizIndex === globalIndex ? 'active' : ''}`}
-                                                        onClick={() => selectQuiz(quiz.id)}
+                                                        onClick={() => { selectQuiz(quiz.id); setIsMobileSidebarOpen(false); }}
                                                     >
                                                         <div className="quiz-item-header">
                                                             <span className="quiz-number">#{index + 1}</span>
@@ -1152,9 +1422,6 @@ const QuizPage = () => {
                                                             </span>
                                                         </div>
                                                         <div className="quiz-title">{quiz.title}</div>
-                                                        <div className="quiz-meta">
-                                                            <span className="quiz-points">🏆 {quiz.points}分</span>
-                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -1198,7 +1465,6 @@ const QuizPage = () => {
                                         >
                                             {getCategoryIcon(currentQuiz.category)} {currentQuiz.category}
                                         </span>
-                                        <span className="badge badge-points">🏆 {currentQuiz.points}分</span>
                                     </div>
                                 </div>
 

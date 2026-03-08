@@ -1,14 +1,29 @@
 // src/components/ProblemSubmissions.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import Editor from '@monaco-editor/react';
 import './ProblemSubmissions.css';
 
 const API_BASE_URL = 'http://localhost:5001/api';
+const FALLBACK_CODE = '// 本次提交未记录代码';
+
+const getCodeLineCount = (code) => {
+    if (!code || typeof code !== 'string') return 1;
+    return code.split(/\r?\n/).length;
+};
+
+const getCodeEditorHeight = (lineCount) => {
+    const estimated = lineCount * 22 + 28;
+    const clamped = Math.max(220, Math.min(520, estimated));
+    return `${clamped}px`;
+};
 
 const ProblemSubmissions = ({ problemId }) => {
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
+    const [codeCopied, setCodeCopied] = useState(false);
+    const copyTimerRef = useRef(null);
 
     // 加载该题目的提交历史
     useEffect(() => {
@@ -16,6 +31,15 @@ const ProblemSubmissions = ({ problemId }) => {
 
         loadSubmissions();
     }, [problemId]);
+
+    useEffect(() => {
+        return () => {
+            if (copyTimerRef.current) {
+                window.clearTimeout(copyTimerRef.current);
+                copyTimerRef.current = null;
+            }
+        };
+    }, []);
 
     const loadSubmissions = async () => {
         try {
@@ -77,6 +101,11 @@ const ProblemSubmissions = ({ problemId }) => {
     // 关闭详情
     const closeDetails = () => {
         setSelectedSubmission(null);
+        setCodeCopied(false);
+        if (copyTimerRef.current) {
+            window.clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = null;
+        }
     };
 
     // 格式化时间
@@ -120,6 +149,14 @@ const ProblemSubmissions = ({ problemId }) => {
         if (!code) return;
         try {
             await navigator.clipboard.writeText(code);
+            setCodeCopied(true);
+            if (copyTimerRef.current) {
+                window.clearTimeout(copyTimerRef.current);
+            }
+            copyTimerRef.current = window.setTimeout(() => {
+                setCodeCopied(false);
+                copyTimerRef.current = null;
+            }, 1200);
         } catch (err) {
             console.error('复制失败:', err);
         }
@@ -184,6 +221,9 @@ const ProblemSubmissions = ({ problemId }) => {
             {/* 详情弹窗 */}
             {selectedSubmission && (() => {
                 const resultContent = getResultContent(selectedSubmission);
+                const submittedCode = selectedSubmission.submittedCode || FALLBACK_CODE;
+                const codeLineCount = getCodeLineCount(submittedCode);
+                const codeEditorHeight = getCodeEditorHeight(codeLineCount);
                 return (
                 <div className="modal-overlay" onClick={closeDetails}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -221,12 +261,37 @@ const ProblemSubmissions = ({ problemId }) => {
                                         className="btn-copy"
                                         onClick={() => handleCopyCode(selectedSubmission.submittedCode)}
                                     >
-                                        一键复制
+                                        {codeCopied ? '复制成功' : '一键复制'}
                                     </button>
                                 </div>
-                                <pre className="code-block">
-                                    <code>{selectedSubmission.submittedCode}</code>
-                                </pre>
+                                <div className="submission-code-panel">
+                                    <div className="submission-code-toolbar">
+                                        <span className="submission-code-lang">JavaScript</span>
+                                        <span className="submission-code-meta">{codeLineCount} 行代码</span>
+                                    </div>
+                                    <div className="submission-code-editor">
+                                        <Editor
+                                            height={codeEditorHeight}
+                                            language="javascript"
+                                            value={submittedCode}
+                                            theme="vs-dark"
+                                            options={{
+                                                readOnly: true,
+                                                minimap: { enabled: false },
+                                                lineNumbers: 'on',
+                                                scrollBeyondLastLine: false,
+                                                wordWrap: 'on',
+                                                fontSize: 13,
+                                                lineHeight: 22,
+                                                tabSize: 2,
+                                                automaticLayout: true,
+                                                padding: { top: 12, bottom: 12 },
+                                                folding: true,
+                                                renderValidationDecorations: 'off'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {/* 结果内容 */}

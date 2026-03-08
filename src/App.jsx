@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useJudgeStore } from './store/judgeStore';
 import { fetchProblems, submitCode, runCode, fetchRecords } from './api/judgeApi';
 import ProblemList from './components/ProblemList';
@@ -12,8 +12,106 @@ import ReviewPage from './pages/ReviewPage';
 import reviewBanner from './assets/review-banner.png';
 import './App.css';
 
+const loadLeetCodePage = () => import('./pages/LeetCodePage');
+const LeetCodePage = lazy(loadLeetCodePage);
+
 const PAGE_STORAGE_KEY = 'js-oj:currentPage';
-const VALID_PAGES = new Set(['review', 'coding', 'quiz', 'intro']);
+const TODAY_TASKS_STORAGE_KEY = 'js-oj:todayTasks';
+const VALID_PAGES = new Set(['review', 'coding', 'quiz', 'leetcode', 'intro']);
+const TASK_PRIORITY_META = {
+  high: '高优',
+  medium: '中优',
+  low: '低优'
+};
+const TASK_PRIORITY_NEXT = {
+  high: 'medium',
+  medium: 'low',
+  low: 'high'
+};
+
+const reorderTasksInTab = (tasks, tab, draggedTaskId, targetTaskId) => {
+  if (!draggedTaskId) return tasks;
+
+  const matcher = tab === 'completed'
+    ? (task) => task.completed
+    : (task) => !task.completed;
+  const visibleTasks = tasks.filter(matcher);
+  const draggedIndex = visibleTasks.findIndex((task) => task.id === draggedTaskId);
+  if (draggedIndex < 0) return tasks;
+
+  const reorderedVisible = [...visibleTasks];
+  const [movedTask] = reorderedVisible.splice(draggedIndex, 1);
+
+  if (targetTaskId) {
+    const targetIndex = reorderedVisible.findIndex((task) => task.id === targetTaskId);
+    if (targetIndex < 0) return tasks;
+    reorderedVisible.splice(targetIndex, 0, movedTask);
+  } else {
+    reorderedVisible.push(movedTask);
+  }
+
+  const visibleTaskSet = new Set(visibleTasks.map((task) => task.id));
+  let visibleCursor = 0;
+  return tasks.map((task) => (
+    visibleTaskSet.has(task.id) ? reorderedVisible[visibleCursor++] : task
+  ));
+};
+
+const getLocalDateKey = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeTasks = (rawTasks) => {
+  if (!Array.isArray(rawTasks)) return [];
+  return rawTasks
+    .filter((task) => task && typeof task === 'object')
+    .map((task, index) => {
+      const title = typeof task.title === 'string' ? task.title.trim() : '';
+      const priority = Object.prototype.hasOwnProperty.call(TASK_PRIORITY_META, task.priority)
+        ? task.priority
+        : 'medium';
+      return {
+        id: typeof task.id === 'string' ? task.id : `today-task-${Date.now()}-${index}`,
+        title,
+        priority,
+        completed: Boolean(task.completed),
+        createdAt: typeof task.createdAt === 'number' ? task.createdAt : Date.now()
+      };
+    })
+    .filter((task) => Boolean(task.title));
+};
+
+const readTasksByDate = (dateKey) => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(TODAY_TASKS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return [];
+    return normalizeTasks(parsed[dateKey]);
+  } catch (err) {
+    console.warn('读取今日任务失败:', err);
+    return [];
+  }
+};
+
+const writeTasksByDate = (dateKey, tasks) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(TODAY_TASKS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const dateMap = parsed && typeof parsed === 'object' ? parsed : {};
+    dateMap[dateKey] = tasks;
+    window.localStorage.setItem(TODAY_TASKS_STORAGE_KEY, JSON.stringify(dateMap));
+  } catch (err) {
+    console.warn('保存今日任务失败:', err);
+  }
+};
+
 const getInitialPage = () => {
   if (typeof window === 'undefined') return 'review';
   try {
@@ -61,6 +159,11 @@ function App() {
 
   // ⭐ 用于强制刷新提交历史
   const [submissionKey, setSubmissionKey] = useState(0);
+
+  const handleOpenLeetCode = () => {
+    loadLeetCodePage();
+    setCurrentPage('leetcode');
+  };
 
   useEffect(() => {
     try {
@@ -168,6 +271,16 @@ function App() {
 
   const todayProgress = todayProgressList.length;
   const [showTodayModal, setShowTodayModal] = useState(false);
+  const [showTodayTaskModal, setShowTodayTaskModal] = useState(false);
+  const [todayTaskTab, setTodayTaskTab] = useState('pending');
+  const [todayTasks, setTodayTasks] = useState(() => readTasksByDate(getLocalDateKey()));
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState('medium');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingTaskTitle, setEditingTaskTitle] = useState('');
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState(null);
+  const todayTaskInputRef = useRef(null);
 
   const filteredProblems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -184,6 +297,48 @@ function App() {
   const progressPassed = stats.total ? (stats.passed / stats.total) * 100 : 0;
   const progressAttempted = stats.total ? (stats.attempted / stats.total) * 100 : 0;
   const progressUnattempted = Math.max(0, 100 - progressPassed - progressAttempted);
+  const pendingTasks = useMemo(
+    () => todayTasks.filter((task) => !task.completed),
+    [todayTasks]
+  );
+  const completedTasks = useMemo(
+    () => todayTasks.filter((task) => task.completed),
+    [todayTasks]
+  );
+  const displayedTasks = todayTaskTab === 'completed' ? completedTasks : pendingTasks;
+  const completedTaskCount = completedTasks.length;
+  const totalTaskCount = todayTasks.length;
+  const taskProgress = totalTaskCount ? Math.round((completedTaskCount / totalTaskCount) * 100) : 0;
+  const todayDateLabel = new Intl.DateTimeFormat('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  }).format(new Date());
+
+  useEffect(() => {
+    writeTasksByDate(getLocalDateKey(), todayTasks);
+  }, [todayTasks]);
+
+  useEffect(() => {
+    if (!showTodayTaskModal) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowTodayTaskModal(false);
+        setEditingTaskId(null);
+        setEditingTaskTitle('');
+        setDraggingTaskId(null);
+        setDragOverTaskId(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    const rafId = window.requestAnimationFrame(() => {
+      todayTaskInputRef.current?.focus();
+    });
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [showTodayTaskModal]);
 
   // 自动保存当前题目的代码草稿
   useEffect(() => {
@@ -337,6 +492,163 @@ function App() {
     setShowResetModal(false);
   };
 
+  const closeTodayTaskModal = () => {
+    setShowTodayTaskModal(false);
+    setEditingTaskId(null);
+    setEditingTaskTitle('');
+    setDraggingTaskId(null);
+    setDragOverTaskId(null);
+  };
+
+  const openTodayTaskModal = () => {
+    setTodayTasks(readTasksByDate(getLocalDateKey()));
+    setTodayTaskTab('pending');
+    setEditingTaskId(null);
+    setEditingTaskTitle('');
+    setDraggingTaskId(null);
+    setDragOverTaskId(null);
+    setShowTodayTaskModal(true);
+  };
+
+  const handleAddTodayTask = () => {
+    const title = newTaskTitle.trim();
+    if (!title) return;
+    const nextTask = {
+      id: `today-task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title,
+      priority: newTaskPriority,
+      completed: false,
+      createdAt: Date.now()
+    };
+    setTodayTasks((prev) => [nextTask, ...prev]);
+    setNewTaskTitle('');
+    setTodayTaskTab('pending');
+  };
+
+  const handleToggleTask = (taskId) => {
+    if (editingTaskId === taskId) {
+      setEditingTaskId(null);
+      setEditingTaskTitle('');
+    }
+    setTodayTasks((prev) => prev.map((task) => (
+      task.id === taskId
+        ? {
+          ...task,
+          completed: !task.completed
+        }
+        : task
+    )));
+  };
+
+  const handleCycleTaskPriority = (taskId) => {
+    setTodayTasks((prev) => prev.map((task) => (
+      task.id === taskId
+        ? {
+          ...task,
+          priority: TASK_PRIORITY_NEXT[task.priority] || 'high'
+        }
+        : task
+    )));
+  };
+
+  const handleStartEditTask = (task) => {
+    setEditingTaskId(task.id);
+    setEditingTaskTitle(task.title);
+  };
+
+  const handleCancelEditTask = () => {
+    setEditingTaskId(null);
+    setEditingTaskTitle('');
+  };
+
+  const handleSaveEditedTask = (taskId) => {
+    const title = editingTaskTitle.trim();
+    if (!title) {
+      handleCancelEditTask();
+      return;
+    }
+    setTodayTasks((prev) => prev.map((task) => (
+      task.id === taskId
+        ? {
+          ...task,
+          title
+        }
+        : task
+    )));
+    setEditingTaskId(null);
+    setEditingTaskTitle('');
+  };
+
+  const handleEditTaskInputKeyDown = (event, taskId) => {
+    if (event.isComposing) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSaveEditedTask(taskId);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      handleCancelEditTask();
+    }
+  };
+
+  const handleTaskDragStart = (event, taskId) => {
+    if (editingTaskId) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+    setDraggingTaskId(taskId);
+    setDragOverTaskId(null);
+  };
+
+  const handleTaskDragOver = (event, taskId) => {
+    if (!draggingTaskId || draggingTaskId === taskId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverTaskId(taskId);
+  };
+
+  const handleTaskDrop = (event, targetTaskId) => {
+    if (!draggingTaskId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setTodayTasks((prev) => reorderTasksInTab(prev, todayTaskTab, draggingTaskId, targetTaskId));
+    setDraggingTaskId(null);
+    setDragOverTaskId(null);
+  };
+
+  const handleTaskListDragOver = (event) => {
+    if (!draggingTaskId) return;
+    event.preventDefault();
+    if (dragOverTaskId !== null) {
+      setDragOverTaskId(null);
+    }
+  };
+
+  const handleTaskListDrop = (event) => {
+    if (!draggingTaskId) return;
+    event.preventDefault();
+    setTodayTasks((prev) => reorderTasksInTab(prev, todayTaskTab, draggingTaskId, null));
+    setDraggingTaskId(null);
+    setDragOverTaskId(null);
+  };
+
+  const handleTaskDragEnd = () => {
+    setDraggingTaskId(null);
+    setDragOverTaskId(null);
+  };
+
+  const handleTaskInputKeyDown = (event) => {
+    if (event.isComposing) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleAddTodayTask();
+    }
+  };
+
   if (loading) {
     return (
         <div className="app-loading">
@@ -359,8 +671,21 @@ function App() {
               >
                 📚 今日复习
               </button>
-              <img className="review-banner" src={reviewBanner} alt="今日复习横幅" />
+              <img
+                className="review-banner"
+                src={reviewBanner}
+                alt="今日复习横幅"
+                decoding="async"
+                loading="lazy"
+                fetchpriority="low"
+              />
             </div>
+            <button
+              className={`nav-btn nav-btn-center ${showTodayTaskModal ? 'active' : ''}`}
+              onClick={openTodayTaskModal}
+            >
+              📋 今日任务
+            </button>
             <nav className="header-nav">
               <button
                 className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
@@ -375,8 +700,10 @@ function App() {
                 📝 八股文
               </button>
               <button
-                className="nav-btn"
-                onClick={() => window.open('https://leetcode.cn/studyplan/top-100-liked/', '_blank', 'noopener,noreferrer')}
+                className={`nav-btn ${currentPage === 'leetcode' ? 'active' : ''}`}
+                onMouseEnter={loadLeetCodePage}
+                onFocus={loadLeetCodePage}
+                onClick={handleOpenLeetCode}
               >
                 ✅ LeetCode 记录
               </button>
@@ -412,6 +739,19 @@ function App() {
               setCurrentPage('quiz');
             }}
           />
+        ) : currentPage === 'leetcode' ? (
+          <Suspense
+            fallback={(
+              <div className="leetcode-loading">
+                <div className="leetcode-loading-card">
+                  <div className="leetcode-loading-title">LeetCode 页面加载中...</div>
+                  <div className="leetcode-loading-bar"></div>
+                </div>
+              </div>
+            )}
+          >
+            <LeetCodePage />
+          </Suspense>
         ) : currentPage === 'intro' ? (
           <ProjectIntroPage />
         ) : (
@@ -582,6 +922,149 @@ function App() {
                     </ul>
                   )}
                 </div>
+              </div>
+            </div>
+        )}
+        {showTodayTaskModal && (
+            <div className="today-task-overlay" onClick={closeTodayTaskModal}>
+              <div
+                className="today-task-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="今日任务"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="today-task-header">
+                  <div>
+                    <p className="today-task-date">{todayDateLabel}</p>
+                    <h3>今日任务</h3>
+                  </div>
+                  <button
+                    className="today-task-close"
+                    onClick={closeTodayTaskModal}
+                    aria-label="关闭今日任务"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="today-task-progress">
+                  <div className="today-task-progress-text">
+                    <span>{completedTaskCount}/{totalTaskCount} 已完成</span>
+                    <span>{taskProgress}%</span>
+                  </div>
+                  <div className="today-task-progress-track">
+                    <span className="today-task-progress-fill" style={{ width: `${taskProgress}%` }} />
+                  </div>
+                </div>
+
+                <div className="today-task-tabs">
+                  <button
+                    className={`today-task-tab ${todayTaskTab === 'pending' ? 'active' : ''}`}
+                    onClick={() => setTodayTaskTab('pending')}
+                  >
+                    待完成 ({pendingTasks.length})
+                  </button>
+                  <button
+                    className={`today-task-tab ${todayTaskTab === 'completed' ? 'active' : ''}`}
+                    onClick={() => setTodayTaskTab('completed')}
+                  >
+                    已完成 ({completedTasks.length})
+                  </button>
+                </div>
+
+                <div
+                  className="today-task-list"
+                  onDragOver={handleTaskListDragOver}
+                  onDrop={handleTaskListDrop}
+                >
+                  {displayedTasks.length === 0 ? (
+                    <div className="today-task-empty">
+                      {todayTaskTab === 'pending' ? '暂无待完成任务，开始添加你的第一个任务吧。' : '还没有已完成任务。'}
+                    </div>
+                  ) : (
+                    displayedTasks.map((task) => (
+                      <div
+                        className={`today-task-item ${task.completed ? 'completed' : ''} ${draggingTaskId === task.id ? 'dragging' : ''} ${dragOverTaskId === task.id ? 'drag-over' : ''}`}
+                        key={task.id}
+                        onDragOver={(event) => handleTaskDragOver(event, task.id)}
+                        onDrop={(event) => handleTaskDrop(event, task.id)}
+                      >
+                        <button
+                          className={`today-task-check ${task.completed ? 'checked' : ''}`}
+                          onClick={() => handleToggleTask(task.id)}
+                          aria-label={task.completed ? '标记为未完成' : '标记为已完成'}
+                        >
+                          {task.completed ? '✓' : ''}
+                        </button>
+                        <button
+                          type="button"
+                          className="today-task-drag-handle"
+                          draggable={editingTaskId !== task.id}
+                          onDragStart={(event) => handleTaskDragStart(event, task.id)}
+                          onDragEnd={handleTaskDragEnd}
+                          aria-label="拖动任务调整顺序"
+                          title="拖动排序"
+                        >
+                          ⋮⋮
+                        </button>
+                        {editingTaskId === task.id ? (
+                          <input
+                            className="today-task-edit-input"
+                            type="text"
+                            value={editingTaskTitle}
+                            onChange={(event) => setEditingTaskTitle(event.target.value)}
+                            onKeyDown={(event) => handleEditTaskInputKeyDown(event, task.id)}
+                            onBlur={() => handleSaveEditedTask(task.id)}
+                            autoFocus
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="today-task-title"
+                            onClick={() => handleStartEditTask(task)}
+                            title="点击编辑任务"
+                          >
+                            {task.title}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className={`today-task-priority ${task.priority}`}
+                          onClick={() => handleCycleTaskPriority(task.id)}
+                          title="点击切换优先级"
+                          aria-label={`当前优先级 ${TASK_PRIORITY_META[task.priority] || TASK_PRIORITY_META.medium}，点击切换`}
+                        >
+                          {TASK_PRIORITY_META[task.priority] || TASK_PRIORITY_META.medium}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="today-task-quick-add">
+                  <select
+                    className="today-task-priority-select"
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    aria-label="选择任务优先级"
+                  >
+                    <option value="high">高优</option>
+                    <option value="medium">中优</option>
+                    <option value="low">低优</option>
+                  </select>
+                  <input
+                    ref={todayTaskInputRef}
+                    className="today-task-input"
+                    type="text"
+                    placeholder="快速添加任务，按 Enter 保存"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={handleTaskInputKeyDown}
+                  />
+                </div>
+
+                <div className="today-task-footer">点击任务可编辑 · 点击优先级可切换 · 拖动可排序 · Esc 关闭 · Enter 添加任务</div>
               </div>
             </div>
         )}
