@@ -290,6 +290,24 @@
   min-width: 0;
 }
 
+.project-qa-edit-btn {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #6366f1;
+  background: transparent;
+  border: 1px solid #c7d2fe;
+  border-radius: 5px;
+  cursor: pointer;
+  line-height: 1.6;
+  transition: background 0.15s, color 0.15s;
+}
+
+.project-qa-edit-btn:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
 .project-qa-empty {
   margin: 0;
   color: #4b5563;
@@ -372,7 +390,32 @@
 .project-qa-answer-markdown pre,
 .project-qa-answer-markdown blockquote,
 .project-qa-answer-markdown table {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
+}
+
+.project-qa-answer-markdown hr {
+  border: none;
+  border-top: 1px dashed #e2e8f0;
+  margin: 12px 0;
+}
+
+.project-qa-answer-markdown h1,
+.project-qa-answer-markdown h2,
+.project-qa-answer-markdown h3,
+.project-qa-answer-markdown h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 12px 0 4px;
+}
+
+.project-qa-answer-markdown strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.project-qa-answer-markdown li {
+  margin-bottom: 4px;
 }
 
 .project-qa-answer-markdown ul,
@@ -422,8 +465,7 @@
   line-height: 1.68;
 }
 
-.project-qa-item:hover .project-qa-answer,
-.project-qa-item:focus-within .project-qa-answer {
+.project-qa-item.is-answer-open .project-qa-answer {
   display: block;
 }
 

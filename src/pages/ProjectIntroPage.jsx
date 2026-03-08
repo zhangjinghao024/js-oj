@@ -466,6 +466,7 @@ const ProjectIntroPage = () => {
   const [activeQaEditorMap, setActiveQaEditorMap] = useState({});
   const [expandedQaGroupMap, setExpandedQaGroupMap] = useState({});
   const [pendingQuestionFocus, setPendingQuestionFocus] = useState(null);
+  const [openAnswerIds, setOpenAnswerIds] = useState(new Set());
   const qaQuestionInputRefs = useRef({});
   const qaDragMetaRef = useRef(null);
   const qaAutoSaveQueueRef = useRef({});
@@ -1020,7 +1021,7 @@ const ProjectIntroPage = () => {
                                         return (
                                           <article
                                             key={item.id}
-                                            className={`project-qa-item ${isInlineEditing ? 'is-inline-editing' : ''} ${draggingQaId === item.id ? 'is-dragging' : ''} ${dragOverTargetKey === itemDropKey ? 'is-drag-over' : ''}`}
+                                            className={`project-qa-item ${isInlineEditing ? 'is-inline-editing' : ''} ${draggingQaId === item.id ? 'is-dragging' : ''} ${dragOverTargetKey === itemDropKey ? 'is-drag-over' : ''} ${!isManagingQa && openAnswerIds.has(item.id) ? 'is-answer-open' : ''}`}
                                             tabIndex={0}
                                             onClick={() => {
                                               if (!isManagingQa) return;
@@ -1133,11 +1134,36 @@ const ProjectIntroPage = () => {
                                                     className="project-qa-question"
                                                     onClick={(event) => {
                                                       event.stopPropagation();
-                                                      openQaInlineEditor(project.id, item.id, true);
+                                                      if (isManagingQa) {
+                                                        openQaInlineEditor(project.id, item.id, true);
+                                                      } else {
+                                                        setOpenAnswerIds((prev) => {
+                                                          const next = new Set(prev);
+                                                          if (next.has(item.id)) {
+                                                            next.delete(item.id);
+                                                          } else {
+                                                            next.add(item.id);
+                                                          }
+                                                          return next;
+                                                        });
+                                                      }
                                                     }}
                                                   >
                                                     {groupItemIndex + 1}. {item.question || '（未填写问题）'}
                                                   </h5>
+                                                  {!isManagingQa && (
+                                                    <button
+                                                      type="button"
+                                                      className="project-qa-edit-btn"
+                                                      onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        openQaInlineEditor(project.id, item.id);
+                                                      }}
+                                                      title="编辑此问答"
+                                                    >
+                                                      编辑
+                                                    </button>
+                                                  )}
                                                   {isManagingQa && (
                                                     <button
                                                       type="button"
@@ -1166,12 +1192,12 @@ const ProjectIntroPage = () => {
                                                   <div className="project-qa-answer-markdown">
                                                     <QaAnswerMarkdownBoundary
                                                       content={typeof item.answer === 'string' && item.answer
-                                                        ? item.answer
+                                                        ? item.answer.trim()
                                                         : '（未填写回答）'}
                                                     >
-                                                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                         {typeof item.answer === 'string' && item.answer
-                                                          ? item.answer
+                                                          ? item.answer.trim()
                                                           : '（未填写回答）'}
                                                       </ReactMarkdown>
                                                     </QaAnswerMarkdownBoundary>
