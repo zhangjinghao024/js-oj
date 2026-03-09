@@ -456,7 +456,13 @@ const reorderProjectQa = (project, dragMeta, dropMeta) => {
 
 const ProjectIntroPage = () => {
   const [projectList, setProjectList] = useState(initialProjects);
-  const [expandedProjectIds, setExpandedProjectIds] = useState([initialProjects[0].id]);
+  const [expandedProjectIds, setExpandedProjectIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('projectIntro_expandedIds');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [initialProjects[0].id];
+  });
   const [editingProjectIds, setEditingProjectIds] = useState([]);
   const [savingProjectIds, setSavingProjectIds] = useState([]);
   const [draggingQaId, setDraggingQaId] = useState(null);
@@ -512,10 +518,11 @@ const ProjectIntroPage = () => {
 
   const toggleProjectCard = (projectId) => {
     setExpandedProjectIds((prev) => {
-      if (prev.includes(projectId)) {
-        return prev.filter((id) => id !== projectId);
-      }
-      return [...prev, projectId];
+      const next = prev.includes(projectId)
+        ? prev.filter((id) => id !== projectId)
+        : [...prev, projectId];
+      try { localStorage.setItem('projectIntro_expandedIds', JSON.stringify(next)); } catch {}
+      return next;
     });
   };
 
