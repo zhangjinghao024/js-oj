@@ -524,7 +524,7 @@ const ProjectIntroPage = () => {
     if (Object.prototype.hasOwnProperty.call(expandedQaGroupMap, key)) {
       return expandedQaGroupMap[key];
     }
-    return actionIndex <= 0;
+    return false;
   };
 
   const toggleQaGroup = (projectId, actionIndex) => {
@@ -532,7 +532,7 @@ const ProjectIntroPage = () => {
     setExpandedQaGroupMap((prev) => {
       const current = Object.prototype.hasOwnProperty.call(prev, key)
         ? prev[key]
-        : actionIndex <= 0;
+        : false;
       return {
         ...prev,
         [key]: !current
