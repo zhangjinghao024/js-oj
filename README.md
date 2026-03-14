@@ -1,6 +1,6 @@
-# JavaScript 手写题判题系统 - 前端
+# 前端面试备考系统 - 前端
 
-基于 React + Vite + Zustand 开发的 JavaScript 手写题在线判题系统前端页面。
+基于 React + Vite + Zustand 开发的前端面试备考工具，集成手写题练习、知识点问答、语音口答、项目介绍 Q&A 管理等功能。
 
 ## 技术栈
 
@@ -8,148 +8,101 @@
 - **Vite** - 构建工具
 - **Zustand** - 状态管理
 - **Monaco Editor** - 代码编辑器
+- **react-markdown** - Markdown 渲染
 - **Axios** - HTTP 客户端
 
-## 功能特性
+## 页面功能
 
-- ✅ 题目列表展示和选择
-- ✅ 题目详情查看(描述、示例、约束条件)
-- ✅ Monaco 代码编辑器集成
-- ✅ 代码运行(示例测试)
-- ✅ 代码提交(完整测试)
-- ✅ 实时测试结果展示
-- ✅ 多测试用例结果对比
-- ✅ 错误信息展示
+| 页面 | 路由 key | 说明 |
+|------|----------|------|
+| 复习看板 | `review` | 今日任务管理，支持拖拽排序和优先级切换 |
+| 手写题练习 | `coding` | Monaco 编辑器 + 判题 + AI 讲解 + 提交历史 |
+| 知识问答 | `quiz` | 前端知识点 Quiz，支持文字/语音作答，AI 评分 |
+| 项目介绍 | `intro` | 按项目分组的面试 Q&A，支持在线编辑答案 |
+| LeetCode 刷题 | `leetcode` | 内嵌 LeetCode 页面（懒加载） |
 
 ## 项目结构
 
 ```
 src/
-├── api/
-│   └── judgeApi.js          # API 接口
+├── pages/
+│   ├── ReviewPage.jsx         # 复习看板
+│   ├── QuizPage.jsx           # 知识问答
+│   ├── ProjectIntroPage.jsx   # 项目介绍 Q&A
+│   ├── LeetCodePage.jsx       # LeetCode 刷题
+│   └── SubmissionsPage.jsx    # 提交历史
 ├── components/
-│   ├── CodeEditor.jsx       # 代码编辑器组件
-│   ├── ProblemList.jsx      # 题目列表组件
-│   ├── ProblemList.css
-│   ├── ProblemDetail.jsx    # 题目详情组件
-│   ├── ProblemDetail.css
-│   ├── TestResult.jsx       # 测试结果组件
-│   └── TestResult.css
+│   ├── CodeEditor.jsx         # Monaco 代码编辑器
+│   ├── ProblemList.jsx        # 手写题列表
+│   ├── ProblemDetail.jsx      # 题目详情
+│   ├── ProblemSubmissions.jsx # 题目提交历史
+│   ├── TestResult.jsx         # 判题结果展示
+│   └── VoiceRecorder.jsx      # 语音录制组件
+├── api/
+│   └── judgeApi.js            # 后端接口封装
 ├── store/
-│   └── judgeStore.js        # Zustand 状态管理
-├── App.jsx                  # 主应用组件
-├── App.css
-├── main.jsx                 # 入口文件
-└── index.css                # 全局样式
+│   └── judgeStore.js          # Zustand 全局状态
+├── App.jsx                    # 主应用（页面路由 & 导航）
+└── main.jsx                   # 入口文件
 ```
 
-## 安装依赖
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-## 开发运行
+### 2. 启动开发服务
 
 ```bash
 npm run dev
 ```
 
-访问: http://localhost:3000
+访问 `http://localhost:3000`
 
-## 构建生产版本
+> 需要后端服务同时运行在 `http://localhost:5000`，参考后端 README。
+
+### 3. 构建生产版本
 
 ```bash
 npm run build
 ```
 
-## API 接口说明
+## 主要功能说明
 
-前端需要后端提供以下接口:
+### 复习看板
 
-### 1. 获取题目列表
-```
-GET /api/problems
-Response: { problems: Array }
-```
+- 今日学习任务的增删改、拖拽排序
+- 任务优先级（高/中/低）一键切换
+- 完成 / 未完成分 Tab 展示
 
-### 2. 获取题目详情
-```
-GET /api/problems/:id
-Response: { problem: Object }
-```
+### 手写题练习
 
-### 3. 运行代码(示例测试)
-```
-POST /api/run
-Body: { problemId, code }
-Response: { status, testResults, ... }
-```
+- Monaco 编辑器，语法高亮 + 自动补全
+- 示例运行（仅跑样例）& 完整提交（全量测试用例）
+- AI 代码讲解（调用后端 DashScope）
+- 每题提交历史展示
 
-### 4. 提交代码(完整测试)
-```
-POST /api/judge
-Body: { problemId, code }
-Response: { status, passedTests, totalTests, testResults, ... }
-```
+### 知识问答
 
-## 后端接口数据格式
+- 前端知识点题库，随机出题
+- 支持文字输入或**语音录制**作答
+- AI 评分 + 参考答案展示
 
-### 题目对象格式
-```javascript
-{
-  id: string,
-  title: string,
-  difficulty: 'Easy' | 'Medium' | 'Hard',
-  description: string,
-  examples: [
-    {
-      input: string,
-      output: string,
-      explanation?: string
-    }
-  ],
-  constraints: string[],
-  hints?: string[],
-  template: string  // 代码模板
-}
-```
+### 项目介绍 Q&A
 
-### 判题结果格式
-```javascript
-{
-  status: 'Accepted' | 'Wrong Answer' | 'Runtime Error' | 'Time Limit Exceeded',
-  message?: string,
-  error?: string,
-  passedTests?: number,
-  totalTests?: number,
-  testResults: [
-    {
-      passed: boolean,
-      input: any,
-      expected: any,
-      actual: any,
-      error?: string,
-      executionTime?: number
-    }
-  ]
-}
-```
+- 按项目 & 行动分组展示问答
+- 答案支持 Markdown 渲染
+- 在线编辑答案，实时保存到后端
 
 ## 注意事项
 
-1. 确保后端服务运行在 `http://localhost:5000`
-2. 如果后端端口不同,请修改 `vite.config.js` 中的代理配置
-3. Monaco Editor 首次加载可能较慢,请耐心等待
-4. 建议使用现代浏览器(Chrome、Firefox、Edge 最新版)
+- 语音录制需要浏览器麦克风权限
+- Monaco Editor 首次加载可能较慢
+- 建议使用 Chrome / Edge 最新版
 
-## 后续优化建议
+## 许可证
 
-- [ ] 添加用户认证功能
-- [ ] 支持代码保存和历史记录
-- [ ] 添加代码执行时间和内存统计
-- [ ] 支持多语言(不仅限于 JavaScript)
-- [ ] 添加题目难度筛选和搜索
-- [ ] 支持暗色主题切换
-- [ ] 添加代码格式化功能
-- [ ] 支持键盘快捷键
+MIT License
