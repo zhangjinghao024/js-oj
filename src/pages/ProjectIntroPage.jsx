@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
+import Editor from '@monaco-editor/react';
 import { fetchProjectIntroQa, saveProjectIntroQa } from '../api/judgeApi';
 import qunarProjectQa from './qunarProjectQa';
 import './ProjectIntroPage.css';
@@ -35,6 +36,7 @@ const createQaItem = (actionIndex = 0) => ({
   id: `qa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   question: '',
   answer: '',
+  code: '',
   actionIndex
 });
 
@@ -322,6 +324,7 @@ const normalizeQaList = (qaList = [], actionCount = 0) => qaList
     id: typeof item.id === 'string' ? item.id : `qa-restored-${Date.now()}-${index}`,
     question: typeof item.question === 'string' ? item.question : '',
     answer: typeof item.answer === 'string' ? item.answer : '',
+    code: typeof item.code === 'string' ? item.code : '',
     actionIndex: getSafeActionIndex(item.actionIndex, index, actionCount)
   }));
 
@@ -473,9 +476,39 @@ const ProjectIntroPage = () => {
   const [expandedQaGroupMap, setExpandedQaGroupMap] = useState({});
   const [pendingQuestionFocus, setPendingQuestionFocus] = useState(null);
   const [openAnswerIds, setOpenAnswerIds] = useState(new Set());
+  const [codeModalState, setCodeModalState] = useState(null);
+  const [codeModalDraft, setCodeModalDraft] = useState('');
   const qaQuestionInputRefs = useRef({});
   const qaDragMetaRef = useRef(null);
   const qaAutoSaveQueueRef = useRef({});
+
+  const openCodeModal = (projectId, qaId) => {
+    const project = projectList.find((p) => p.id === projectId);
+    const item = project?.qa.find((q) => q.id === qaId);
+    setCodeModalDraft(item?.code || '');
+    setCodeModalState({ projectId, qaId });
+  };
+
+  const closeCodeModal = () => {
+    setCodeModalState(null);
+    setCodeModalDraft('');
+  };
+
+  const saveCodeModal = () => {
+    if (!codeModalState) return;
+    const { projectId, qaId } = codeModalState;
+    const draft = codeModalDraft;
+    const updatedList = projectList.map((project) => {
+      if (project.id !== projectId) return project;
+      return {
+        ...project,
+        qa: project.qa.map((item) => (item.id === qaId ? { ...item, code: draft } : item))
+      };
+    });
+    setProjectList(updatedList);
+    closeCodeModal();
+    queueQaAutoSave(projectId, updatedList);
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -1159,17 +1192,30 @@ const ProjectIntroPage = () => {
                                                     {groupItemIndex + 1}. {item.question || '（未填写问题）'}
                                                   </h5>
                                                   {!isManagingQa && (
-                                                    <button
-                                                      type="button"
-                                                      className="project-qa-edit-btn"
-                                                      onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        openQaInlineEditor(project.id, item.id);
-                                                      }}
-                                                      title="编辑此问答"
-                                                    >
-                                                      编辑
-                                                    </button>
+                                                    <div className="project-qa-item-btns">
+                                                      <button
+                                                        type="button"
+                                                        className="project-qa-code-btn"
+                                                        onClick={(event) => {
+                                                          event.stopPropagation();
+                                                          openCodeModal(project.id, item.id);
+                                                        }}
+                                                        title="查看 / 编辑代码示例"
+                                                      >
+                                                        代码
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className="project-qa-edit-btn"
+                                                        onClick={(event) => {
+                                                          event.stopPropagation();
+                                                          openQaInlineEditor(project.id, item.id);
+                                                        }}
+                                                        title="编辑此问答"
+                                                      >
+                                                        编辑
+                                                      </button>
+                                                    </div>
                                                   )}
                                                   {isManagingQa && (
                                                     <button
@@ -1307,6 +1353,78 @@ const ProjectIntroPage = () => {
           );
         })}
       </section>
+      {codeModalState && (() => {
+        const modalProject = projectList.find((p) => p.id === codeModalState.projectId);
+        const modalItem = modalProject?.qa.find((q) => q.id === codeModalState.qaId);
+        return (
+          <div
+            className="qa-code-modal-overlay"
+            onClick={closeCodeModal}
+          >
+            <div
+              className="qa-code-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="qa-code-modal-header">
+                <div className="qa-code-modal-title-wrap">
+                  <span className="qa-code-modal-label">代码示例</span>
+                  <p className="qa-code-modal-question">{modalItem?.question || '（未填写问题）'}</p>
+                </div>
+                <button
+                  type="button"
+                  className="qa-code-modal-close"
+                  onClick={closeCodeModal}
+                  title="关闭"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="qa-code-modal-body">
+                <div className="qa-code-editor-bar">
+                  <span className="qa-code-editor-dot" />
+                  <span className="qa-code-editor-dot" />
+                  <span className="qa-code-editor-dot" />
+                  <span className="qa-code-editor-lang">JavaScript</span>
+                </div>
+                <div className="qa-code-editor-wrap">
+                  <Editor
+                    language="javascript"
+                    theme="vs-dark"
+                    value={codeModalDraft}
+                    onChange={(value) => setCodeModalDraft(value ?? '')}
+                    options={{
+                      fontSize: 13.5,
+                      lineHeight: 22,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      tabSize: 2,
+                      renderLineHighlight: 'line',
+                      automaticLayout: true,
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="qa-code-modal-footer">
+                <button
+                  type="button"
+                  className="qa-code-modal-cancel"
+                  onClick={closeCodeModal}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="qa-code-modal-save"
+                  onClick={saveCodeModal}
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
