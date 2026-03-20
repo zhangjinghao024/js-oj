@@ -50,7 +50,7 @@ const initialProjects = [
     actions: [
       '参与火车票抢票核心业务开发：针对填单页、详情页、列表页等 6 大核心页面代码重复率高的问题，抽离 RobbingCell、Modal、Card、Label 等通用组件至 Common 库，设计 UI 与业务特性分离的多态 Style 方案。',
       '参与火车 App 页面秒开率提升与性能优化：将页面启动链路拆解为跳转/数据/计算/渲染四阶段。优化 QP 包预加载策略（预加载占比提升至 94.4%）；制定三级接口优先级，延迟非核心请求，异步串行改并行；引入计算缓存与算法降阶，长任务分批执行；非可视组件延迟挂载，结合批量更新与 useMemo 优化首帧渲染。',
-      '参与火车票业务针对鸿蒙单框架进行 RN 适配，对齐线上版本，实现火车部分原生桥接层：适配多项 H5 与原生通信 SDK（含日历提醒、本地存储、语音助手），并完成折叠屏体验优化。'
+      '参与火车票业务针对鸿蒙单框架进行 RN 适配，对齐线上版本，实现火车部分原生桥接层：适配多项 RN/H5 与原生通信 SDK（含日历提醒、本地存储、语音助手），并完成折叠屏体验优化。'
     ],
     outcomes: [
       '抢票 UI 组件复用量均 >3，同类 UI 需求开发周期从 2 天缩短至 1 天。',
@@ -459,12 +459,12 @@ const reorderProjectQa = (project, dragMeta, dropMeta) => {
 
 const ProjectIntroPage = () => {
   const [projectList, setProjectList] = useState(initialProjects);
-  const [expandedProjectIds, setExpandedProjectIds] = useState(() => {
+  const [expandedProjectId, setExpandedProjectId] = useState(() => {
     try {
-      const saved = localStorage.getItem('projectIntro_expandedIds');
+      const saved = localStorage.getItem('projectIntro_expandedId');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [initialProjects[0].id];
+    return initialProjects[0].id;
   });
   const [editingProjectIds, setEditingProjectIds] = useState([]);
   const [savingProjectIds, setSavingProjectIds] = useState([]);
@@ -473,9 +473,9 @@ const ProjectIntroPage = () => {
   const [dragOverActionIndex, setDragOverActionIndex] = useState(null);
   const [qaAutoSaveErrorMap, setQaAutoSaveErrorMap] = useState({});
   const [activeQaEditorMap, setActiveQaEditorMap] = useState({});
-  const [expandedQaGroupMap, setExpandedQaGroupMap] = useState({});
+  const [expandedQaGroupKey, setExpandedQaGroupKey] = useState(null);
   const [pendingQuestionFocus, setPendingQuestionFocus] = useState(null);
-  const [openAnswerIds, setOpenAnswerIds] = useState(new Set());
+  const [openAnswerId, setOpenAnswerId] = useState(null);
   const [codeModalState, setCodeModalState] = useState(null);
   const [codeModalDraft, setCodeModalDraft] = useState('');
   const qaQuestionInputRefs = useRef({});
@@ -550,34 +550,24 @@ const ProjectIntroPage = () => {
   };
 
   const toggleProjectCard = (projectId) => {
-    setExpandedProjectIds((prev) => {
-      const next = prev.includes(projectId)
-        ? prev.filter((id) => id !== projectId)
-        : [...prev, projectId];
-      try { localStorage.setItem('projectIntro_expandedIds', JSON.stringify(next)); } catch {}
+    setExpandedProjectId((prev) => {
+      const next = prev === projectId ? null : projectId;
+      try { localStorage.setItem('projectIntro_expandedId', JSON.stringify(next)); } catch {}
       return next;
     });
+    setExpandedQaGroupKey(null);
+    setOpenAnswerId(null);
   };
 
   const isQaGroupExpanded = (projectId, actionIndex) => {
     const key = getQaGroupKey(projectId, actionIndex);
-    if (Object.prototype.hasOwnProperty.call(expandedQaGroupMap, key)) {
-      return expandedQaGroupMap[key];
-    }
-    return false;
+    return expandedQaGroupKey === key;
   };
 
   const toggleQaGroup = (projectId, actionIndex) => {
     const key = getQaGroupKey(projectId, actionIndex);
-    setExpandedQaGroupMap((prev) => {
-      const current = Object.prototype.hasOwnProperty.call(prev, key)
-        ? prev[key]
-        : false;
-      return {
-        ...prev,
-        [key]: !current
-      };
-    });
+    setExpandedQaGroupKey((prev) => prev === key ? null : key);
+    setOpenAnswerId(null);
   };
 
   const saveProjectQaForId = async (projectId, options = {}) => {
@@ -713,10 +703,7 @@ const ProjectIntroPage = () => {
       return hasChanged && nextProjectList ? nextProjectList : prev;
     });
 
-    setExpandedQaGroupMap((prev) => ({
-      ...prev,
-      [getQaGroupKey(projectId, dropMeta.targetActionIndex)]: true
-    }));
+    setExpandedQaGroupKey(getQaGroupKey(projectId, dropMeta.targetActionIndex));
     clearQaDragState();
 
     if (hasChanged && nextProjectList) {
@@ -838,10 +825,7 @@ const ProjectIntroPage = () => {
     const newQaId = addQaItem(projectId);
     const targetProject = projectList.find((project) => project.id === projectId);
     const defaultActionIndex = targetProject && targetProject.actions.length > 0 ? 0 : -1;
-    setExpandedQaGroupMap((prev) => ({
-      ...prev,
-      [getQaGroupKey(projectId, defaultActionIndex)]: true
-    }));
+    setExpandedQaGroupKey(getQaGroupKey(projectId, defaultActionIndex));
     setActiveQaEditorMap((prev) => ({
       ...prev,
       [projectId]: newQaId
@@ -852,10 +836,7 @@ const ProjectIntroPage = () => {
     const newQaId = addQaItem(projectId);
     const targetProject = projectList.find((project) => project.id === projectId);
     const defaultActionIndex = targetProject && targetProject.actions.length > 0 ? 0 : -1;
-    setExpandedQaGroupMap((prev) => ({
-      ...prev,
-      [getQaGroupKey(projectId, defaultActionIndex)]: true
-    }));
+    setExpandedQaGroupKey(getQaGroupKey(projectId, defaultActionIndex));
     setActiveQaEditorMap((prev) => ({
       ...prev,
       [projectId]: newQaId
@@ -872,10 +853,7 @@ const ProjectIntroPage = () => {
           qaIndex,
           targetProject.actions.length
         );
-        setExpandedQaGroupMap((prev) => ({
-          ...prev,
-          [getQaGroupKey(projectId, actionIndex)]: true
-        }));
+        setExpandedQaGroupKey(getQaGroupKey(projectId, actionIndex));
       }
     }
 
@@ -919,7 +897,7 @@ const ProjectIntroPage = () => {
 
       <section className="project-card-list">
         {projectList.map((project) => {
-          const isExpanded = expandedProjectIds.includes(project.id);
+          const isExpanded = expandedProjectId === project.id;
           const isManagingQa = editingProjectIds.includes(project.id);
           const isSavingQa = savingProjectIds.includes(project.id);
           const qaGroups = buildQaGroups(project);
@@ -1061,7 +1039,7 @@ const ProjectIntroPage = () => {
                                         return (
                                           <article
                                             key={item.id}
-                                            className={`project-qa-item ${isInlineEditing ? 'is-inline-editing' : ''} ${draggingQaId === item.id ? 'is-dragging' : ''} ${dragOverTargetKey === itemDropKey ? 'is-drag-over' : ''} ${!isManagingQa && openAnswerIds.has(item.id) ? 'is-answer-open' : ''}`}
+                                            className={`project-qa-item ${isInlineEditing ? 'is-inline-editing' : ''} ${draggingQaId === item.id ? 'is-dragging' : ''} ${dragOverTargetKey === itemDropKey ? 'is-drag-over' : ''} ${!isManagingQa && openAnswerId === item.id ? 'is-answer-open' : ''}`}
                                             tabIndex={0}
                                             onClick={() => {
                                               if (!isManagingQa) return;
@@ -1177,15 +1155,7 @@ const ProjectIntroPage = () => {
                                                       if (isManagingQa) {
                                                         openQaInlineEditor(project.id, item.id, true);
                                                       } else {
-                                                        setOpenAnswerIds((prev) => {
-                                                          const next = new Set(prev);
-                                                          if (next.has(item.id)) {
-                                                            next.delete(item.id);
-                                                          } else {
-                                                            next.add(item.id);
-                                                          }
-                                                          return next;
-                                                        });
+                                                        setOpenAnswerId((prev) => prev === item.id ? null : item.id);
                                                       }
                                                     }}
                                                   >
