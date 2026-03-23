@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useJudgeStore } from '../store/judgeStore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import './ProblemDetail.css';
+
+const SCRIPTS_KEY = 'js-oj:interviewScripts';
+
+const readScripts = () => {
+    try {
+        const raw = window.localStorage.getItem(SCRIPTS_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+};
+
+const writeScripts = (scripts) => {
+    try {
+        window.localStorage.setItem(SCRIPTS_KEY, JSON.stringify(scripts));
+    } catch (e) { console.warn('保存面试话术失败:', e); }
+};
 
 const ProblemDetail = () => {
     const { currentProblem, reviewQueue, addToReviewQueue, getReviewStatus } = useJudgeStore();
@@ -11,6 +26,10 @@ const ProblemDetail = () => {
     const [isExamplesExpanded, setIsExamplesExpanded] = useState(true);
     const [isConstraintsExpanded, setIsConstraintsExpanded] = useState(true);
     const [isHintsExpanded, setIsHintsExpanded] = useState(true);
+    const [showScriptModal, setShowScriptModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [scriptDraft, setScriptDraft] = useState('');
+    const [scriptContent, setScriptContent] = useState('');
 
     const reviewStatus = currentProblem ? getReviewStatus('code', currentProblem.id) : 'unreviewed';
     const isInReviewQueue = currentProblem
@@ -18,6 +37,43 @@ const ProblemDetail = () => {
       : false;
     const normalizedTitle = String(currentProblem?.title || '').toLowerCase();
     const isPromiseHighlightProblem = normalizedTitle.includes('promise');
+
+    // Load saved script when problem changes
+    useEffect(() => {
+        if (currentProblem) {
+            const scripts = readScripts();
+            setScriptContent(scripts[currentProblem.id] || '');
+        }
+    }, [currentProblem?.id]);
+
+    const openScriptModal = () => {
+        if (!currentProblem) return;
+        const scripts = readScripts();
+        const saved = scripts[currentProblem.id] || '';
+        setScriptContent(saved);
+        setScriptDraft(saved);
+        setIsEditing(!saved);
+        setShowScriptModal(true);
+    };
+
+    const handleSaveScript = () => {
+        if (!currentProblem) return;
+        const scripts = readScripts();
+        scripts[currentProblem.id] = scriptDraft;
+        writeScripts(scripts);
+        setScriptContent(scriptDraft);
+        setIsEditing(false);
+    };
+
+    const handleDeleteScript = () => {
+        if (!currentProblem) return;
+        const scripts = readScripts();
+        delete scripts[currentProblem.id];
+        writeScripts(scripts);
+        setScriptContent('');
+        setScriptDraft('');
+        setIsEditing(true);
+    };
 
     if (!currentProblem) {
         return (
@@ -43,6 +99,12 @@ const ProblemDetail = () => {
                         disabled={isInReviewQueue}
                     >
                         {isInReviewQueue ? '已在复习队列' : '放入复习队列'}
+                    </button>
+                    <button
+                        className={`interview-script-btn ${scriptContent ? 'has-content' : ''}`}
+                        onClick={openScriptModal}
+                    >
+                        🎤 面试话术
                     </button>
                 </div>
                 <span className={`difficulty-tag ${currentProblem.difficulty?.toLowerCase()}`}>
@@ -135,6 +197,58 @@ const ProblemDetail = () => {
                             ))}
                         </ul>
                     )}
+                </div>
+            )}
+            {showScriptModal && (
+                <div className="script-modal-overlay" onClick={() => setShowScriptModal(false)}>
+                    <div className="script-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="script-modal-header">
+                            <h3>🎤 面试话术 - {currentProblem.title}</h3>
+                            <div className="script-modal-actions">
+                                {!isEditing && scriptContent && (
+                                    <>
+                                        <button className="script-action-btn edit" onClick={() => { setScriptDraft(scriptContent); setIsEditing(true); }}>编辑</button>
+                                        <button className="script-action-btn delete" onClick={handleDeleteScript}>删除</button>
+                                    </>
+                                )}
+                                <button className="script-modal-close" onClick={() => setShowScriptModal(false)}>✕</button>
+                            </div>
+                        </div>
+                        <div className="script-modal-body">
+                            {isEditing ? (
+                                <div className="script-editor">
+                                    <textarea
+                                        className="script-textarea"
+                                        value={scriptDraft}
+                                        onChange={(e) => setScriptDraft(e.target.value)}
+                                        placeholder="在这里编写面试话术，支持 Markdown 格式..."
+                                        autoFocus
+                                    />
+                                    <div className="script-editor-footer">
+                                        <span className="script-hint">支持 Markdown 格式</span>
+                                        <div className="script-editor-btns">
+                                            <button className="script-action-btn cancel" onClick={() => {
+                                                if (scriptContent) { setIsEditing(false); }
+                                                else { setShowScriptModal(false); }
+                                            }}>取消</button>
+                                            <button className="script-action-btn save" onClick={handleSaveScript} disabled={!scriptDraft.trim()}>保存</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : scriptContent ? (
+                                <div className="markdown-body">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                        {scriptContent}
+                                    </ReactMarkdown>
+                                </div>
+                            ) : (
+                                <div className="script-empty">
+                                    <p>暂无面试话术</p>
+                                    <button className="script-action-btn save" onClick={() => setIsEditing(true)}>开始编写</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

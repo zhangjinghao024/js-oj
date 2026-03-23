@@ -267,6 +267,25 @@
   gap: 6px;
 }
 
+.leetcode-red-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.leetcode-red-dot:hover {
+  background: #fca5a5;
+}
+
+.leetcode-red-dot.active {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+
 .leetcode-list-number {
   font-size: 12px;
   font-weight: 700;
@@ -848,4 +867,28 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+.leetcode-float-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--lc-accent), var(--lc-accent-deep));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.35);
+  z-index: 100;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.leetcode-float-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(249, 115, 22, 0.45);
 }

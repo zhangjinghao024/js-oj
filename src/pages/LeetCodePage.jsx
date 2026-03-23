@@ -4,6 +4,21 @@ import { shallow } from 'zustand/shallow';
 import './LeetCodePage.css';
 
 const LEETCODE_SELECTED_PROBLEM_KEY = 'js-oj:leetcodeSelectedProblemId';
+const LEETCODE_EXPANDED_SECTIONS_KEY = 'js-oj:leetcodeExpandedSections';
+const LEETCODE_RED_DOTS_KEY = 'js-oj:leetcodeRedDots';
+
+const readRedDots = () => {
+  try {
+    const raw = window.localStorage.getItem(LEETCODE_RED_DOTS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+};
+
+const writeRedDots = (dots) => {
+  try {
+    window.localStorage.setItem(LEETCODE_RED_DOTS_KEY, JSON.stringify(dots));
+  } catch (e) { console.warn('保存红点状态失败:', e); }
+};
 
 const readSelectedProblemId = () => {
   if (typeof window === 'undefined') return null;
@@ -21,6 +36,26 @@ const writeSelectedProblemId = (problemId) => {
     window.localStorage.setItem(LEETCODE_SELECTED_PROBLEM_KEY, problemId);
   } catch (err) {
     console.warn('保存 LeetCode 上次选题失败:', err);
+  }
+};
+
+const readExpandedSections = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(LEETCODE_EXPANDED_SECTIONS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn('读取 LeetCode 分类展开状态失败:', err);
+    return null;
+  }
+};
+
+const writeExpandedSections = (sections) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(LEETCODE_EXPANDED_SECTIONS_KEY, JSON.stringify(sections));
+  } catch (err) {
+    console.warn('保存 LeetCode 分类展开状态失败:', err);
   }
 };
 
@@ -1064,6 +1099,8 @@ const ProblemListItem = memo(function ProblemListItem({
   isPrereq,
   isSortMergeHint,
   isVeryForgetful,
+  hasRedDot,
+  onToggleRedDot,
   onSelect
 }) {
   return (
@@ -1074,6 +1111,11 @@ const ProblemListItem = memo(function ProblemListItem({
     >
       <div className="leetcode-list-item-top">
         <div className="leetcode-list-meta">
+          <span
+            className={'leetcode-red-dot ' + (hasRedDot ? 'active' : '')}
+            onClick={onToggleRedDot}
+            title={hasRedDot ? '取消标记' : '标记红点'}
+          />
           <span className="leetcode-list-number">#{displayIndex}</span>
           {isFeatured && <span className="leetcode-list-focus-tag">重点</span>}
           {isForgetful && <span className="leetcode-list-forget-tag">易忘</span>}
@@ -1100,7 +1142,10 @@ const LeetCodePage = () => {
   const [mode, setMode] = useState('practice');
   const [activeDetailTab, setActiveDetailTab] = useState('link');
   const [selectedProblemId, setSelectedProblemId] = useState(() => readSelectedProblemId());
+  const [redDots, setRedDots] = useState(() => readRedDots());
   const [expandedSections, setExpandedSections] = useState(() => {
+    const saved = readExpandedSections();
+    if (saved) return saved;
     const initial = {};
     SECTION_PRIORITY.forEach((title) => {
       initial[title] = true;
@@ -1248,11 +1293,22 @@ const LeetCodePage = () => {
     removeFromReviewQueue('leetcode', id);
   }, [removeFromReviewQueue]);
 
+  const handleToggleRedDot = useCallback((id, e) => {
+    e.stopPropagation();
+    setRedDots((prev) => {
+      const next = { ...prev };
+      if (next[id]) { delete next[id]; } else { next[id] = true; }
+      writeRedDots(next);
+      return next;
+    });
+  }, []);
+
   const toggleSectionExpand = useCallback((title) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [title]: !prev[title]
-    }));
+    setExpandedSections((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      writeExpandedSections(next);
+      return next;
+    });
   }, []);
 
   const handlePrevProblem = useCallback(() => {
@@ -1267,67 +1323,9 @@ const LeetCodePage = () => {
 
   return (
     <div className="leetcode-page">
-      <header className="leetcode-header-card">
-        <div className="leetcode-header-main">
-          <p className="leetcode-kicker">LeetCode Study Plan</p>
-          <h2>✅ LeetCode 记录（Top 100）</h2>
-          <p>题目均可直接跳转到 LeetCode 官方网站刷题，状态会保存在本地。</p>
-
-          <div className="leetcode-mode-switch">
-            <button
-              className={'leetcode-mode-btn ' + (mode === 'practice' ? 'active' : '')}
-              onClick={() => setMode('practice')}
-            >
-              刷题模式
-            </button>
-            <button
-              className={'leetcode-mode-btn ' + (mode === 'review' ? 'active' : '')}
-              onClick={() => setMode('review')}
-            >
-              复习模式
-            </button>
-          </div>
-        </div>
-
-        <div className="leetcode-header-tools">
-          <div className="leetcode-stats">
-            <div>
-              <span className="leetcode-stat-num">{stats.total}</span>
-              <span className="leetcode-stat-label">总题数</span>
-            </div>
-            <div>
-              <span className="leetcode-stat-num">{stats.done}</span>
-              <span className="leetcode-stat-label">已做过</span>
-            </div>
-            <div>
-              <span className="leetcode-stat-num">{stats.reviewed}</span>
-              <span className="leetcode-stat-label">已复习</span>
-            </div>
-            <div>
-              <span className="leetcode-stat-num">{stats.pendingReview}</span>
-              <span className="leetcode-stat-label">待复习</span>
-            </div>
-            <div>
-              <span className="leetcode-stat-num">{stats.sectionCount}</span>
-              <span className="leetcode-stat-label">专题数</span>
-            </div>
-            <div>
-              <span className="leetcode-stat-num">{visibleCount}</span>
-              <span className="leetcode-stat-label">当前展示</span>
-            </div>
-          </div>
-
-          <div className="leetcode-review-hint">
-            {mode === 'practice'
-              ? '刷题模式：展示全部 100 题，你可以逐题标记做题和复习状态。'
-              : '复习模式：仅展示已做过题目，未复习题默认靠前，便于按批次复习。'}
-          </div>
-
-          <a href="https://leetcode.cn/studyplan/top-100-liked/" target="_blank" rel="noreferrer" className="leetcode-plan-link">
-            打开官方题单
-          </a>
-        </div>
-      </header>
+      <a href="https://leetcode.cn/studyplan/top-100-liked/" target="_blank" rel="noreferrer" className="leetcode-float-btn" title="打开官方题单">
+        📋
+      </a>
 
       {visibleSections.length === 0 ? (
         <section className="leetcode-empty">
@@ -1376,6 +1374,8 @@ const LeetCodePage = () => {
                           isPrereq={PREREQ_PROBLEM_IDS.has(problem.id)}
                           isSortMergeHint={SORT_MERGE_HINT_PROBLEM_IDS.has(problem.id)}
                           isVeryForgetful={VERY_FORGETFUL_PROBLEM_IDS.has(problem.id)}
+                          hasRedDot={Boolean(redDots[problem.id])}
+                          onToggleRedDot={(e) => handleToggleRedDot(problem.id, e)}
                           onSelect={() => setSelectedProblemId(problem.id)}
                         />
                       ))}

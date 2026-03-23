@@ -9,7 +9,6 @@ import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
 import ProjectIntroPage from './pages/ProjectIntroPage';
 import ReviewPage from './pages/ReviewPage';
-import reviewBanner from './assets/review-banner.png';
 import './App.css';
 
 const loadLeetCodePage = () => import('./pages/LeetCodePage');
@@ -664,21 +663,6 @@ function App() {
         <header className="app-header">
           <div className="header-content">
             <div className="header-left">
-              {/*<h1>111</h1>*/}
-              <button
-                className={`nav-btn ${currentPage === 'review' ? 'active' : ''}`}
-                onClick={() => setCurrentPage('review')}
-              >
-                📚 今日复习
-              </button>
-              <img
-                className="review-banner"
-                src={reviewBanner}
-                alt="今日复习横幅"
-                decoding="async"
-                loading="lazy"
-                fetchpriority="low"
-              />
             </div>
             <button
               className={`nav-btn nav-btn-center ${showTodayTaskModal ? 'active' : ''}`}
