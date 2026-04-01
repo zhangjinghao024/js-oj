@@ -9,6 +9,7 @@ import ProblemSubmissions from './components/ProblemSubmissions'; // ⭐ 新增
 import QuizPage from './pages/QuizPage';
 import ProjectIntroPage from './pages/ProjectIntroPage';
 import ReviewPage from './pages/ReviewPage';
+import ProjectQaPage from './pages/ProjectQaPage';
 import './App.css';
 
 const loadLeetCodePage = () => import('./pages/LeetCodePage');
@@ -16,7 +17,7 @@ const LeetCodePage = lazy(loadLeetCodePage);
 
 const PAGE_STORAGE_KEY = 'js-oj:currentPage';
 const TODAY_TASKS_STORAGE_KEY = 'js-oj:todayTasks';
-const VALID_PAGES = new Set(['review', 'coding', 'quiz', 'leetcode', 'intro']);
+const VALID_PAGES = new Set(['review', 'coding', 'quiz', 'leetcode', 'intro', 'projectqa']);
 const TASK_PRIORITY_META = {
   high: '高优',
   medium: '中优',
@@ -152,9 +153,16 @@ function App() {
   const [showReviewReminder, setShowReviewReminder] = useState(false);
 
   // 侧边栏宽度调整相关状态
-  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('js-oj:sidebarWidth');
+      if (saved) return Math.max(200, Math.min(600, Number(saved)));
+    } catch {}
+    return 300;
+  });
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
+  const sidebarWidthRef = useRef(sidebarWidth);
 
   // ⭐ 用于强制刷新提交历史
   const [submissionKey, setSubmissionKey] = useState(0);
@@ -281,6 +289,11 @@ function App() {
   const [dragOverTaskId, setDragOverTaskId] = useState(null);
   const todayTaskInputRef = useRef(null);
 
+  // 弹窗拖动
+  const [modalPos, setModalPos] = useState({ x: 0, y: 0 });
+  const isDraggingModal = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+
   const filteredProblems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return problems
@@ -356,6 +369,11 @@ function App() {
     };
   }, [currentProblem?.id, userCode, saveDraft]);
 
+  // 切换题目时重置到「题目描述」tab
+  useEffect(() => {
+    setActiveTab('description');
+  }, [currentProblem?.id]);
+
   // 处理拖拽调整宽度
   const handleMouseDown = (e) => {
     setIsResizing(true);
@@ -372,12 +390,14 @@ function App() {
       // 限制最小和最大宽度
       if (newWidth >= 200 && newWidth <= 600) {
         setSidebarWidth(newWidth);
+        sidebarWidthRef.current = newWidth;
       }
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.classList.remove('resizing');
+      try { localStorage.setItem('js-oj:sidebarWidth', String(sidebarWidthRef.current)); } catch {}
     };
 
     if (isResizing) {
@@ -506,7 +526,26 @@ function App() {
     setEditingTaskTitle('');
     setDraggingTaskId(null);
     setDragOverTaskId(null);
+    setModalPos({ x: 0, y: 0 });
     setShowTodayTaskModal(true);
+  };
+
+  const handleModalDragStart = (e) => {
+    isDraggingModal.current = true;
+    dragStart.current = { x: e.clientX - modalPos.x, y: e.clientY - modalPos.y };
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDraggingModal.current) return;
+      setModalPos({ x: ev.clientX - dragStart.current.x, y: ev.clientY - dragStart.current.y });
+    };
+    const onUp = () => {
+      isDraggingModal.current = false;
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
   const handleAddTodayTask = () => {
@@ -664,24 +703,18 @@ function App() {
           <div className="header-content">
             <div className="header-left">
             </div>
-            <button
-              className={`nav-btn nav-btn-center ${showTodayTaskModal ? 'active' : ''}`}
-              onClick={openTodayTaskModal}
-            >
-              📋 今日任务
-            </button>
             <nav className="header-nav">
               <button
                 className={`nav-btn ${currentPage === 'coding' ? 'active' : ''}`}
                 onClick={() => setCurrentPage('coding')}
               >
-                💻 手写题
+                手写题
               </button>
               <button
                 className={`nav-btn ${currentPage === 'quiz' ? 'active' : ''}`}
                 onClick={() => setCurrentPage('quiz')}
               >
-                📝 八股文
+                八股文
               </button>
               <button
                 className={`nav-btn ${currentPage === 'leetcode' ? 'active' : ''}`}
@@ -689,13 +722,13 @@ function App() {
                 onFocus={loadLeetCodePage}
                 onClick={handleOpenLeetCode}
               >
-                ✅ LeetCode 记录
+                LeetCode
               </button>
               <button
-                className={`nav-btn ${currentPage === 'intro' ? 'active' : ''}`}
-                onClick={() => setCurrentPage('intro')}
+                className={`nav-btn ${currentPage === 'projectqa' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('projectqa')}
               >
-                📌 项目介绍
+                项目回答
               </button>
             </nav>
           </div>
@@ -738,37 +771,10 @@ function App() {
           </Suspense>
         ) : currentPage === 'intro' ? (
           <ProjectIntroPage />
+        ) : currentPage === 'projectqa' ? (
+          <ProjectQaPage />
         ) : (
           <div className="coding-page">
-              <section className="coding-topbar">
-                <div className="problem-progress">
-                  <div className="progress-stats">
-                    <span className="progress-item passed">已通过 {stats.passed}</span>
-                    <span className="progress-item attempted">尝试 {stats.attempted}</span>
-                    <span className="progress-item unattempted">未做 {stats.unattempted}</span>
-                    <span className="progress-total">总计 {stats.total}</span>
-                  </div>
-                  <div className="progress-bar">
-                    <span className="progress-segment passed" style={{ width: `${progressPassed}%` }} />
-                    <span className="progress-segment attempted" style={{ width: `${progressAttempted}%` }} />
-                    <span className="progress-segment unattempted" style={{ width: `${progressUnattempted}%` }} />
-                  </div>
-                </div>
-                <div className="coding-today-progress" onClick={() => setShowTodayModal(true)}>
-                  <span className="today-label">今日进度</span>
-                  <span className="today-count">{todayProgress}</span>
-                  <span className="today-unit">题</span>
-                </div>
-                <div className="problem-filters">
-                  <input
-                    className="problem-search"
-                    type="text"
-                    placeholder="搜索题目..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </section>
               <div className="app-container">
               {/* 左侧: 题目列表 - 可拖拽调整宽度 */}
               <aside
@@ -917,8 +923,9 @@ function App() {
                 aria-modal="true"
                 aria-label="今日任务"
                 onClick={(e) => e.stopPropagation()}
+                style={{ transform: `translate(${modalPos.x}px, ${modalPos.y}px)` }}
               >
-                <div className="today-task-header">
+                <div className="today-task-header" onMouseDown={handleModalDragStart} style={{ cursor: 'grab' }}>
                   <div>
                     <p className="today-task-date">{todayDateLabel}</p>
                     <h3>今日任务</h3>
