@@ -283,12 +283,6 @@ const PROJECT_QA_SECTIONS = [
             obsidianFile: '03.火车票后台管理系统🖥️/行动1/05 BFF 层用 Koa 实现，为什么选 Koa 而不是 Express？和 Next.js 自带的 API Routes 有什么区别？.md'
           },
           {
-            id: 'p3-bff-4',
-            title: '动态菜单怎么实现的？权限怎么控制？',
-            tags: ['动态菜单', 'RBAC', '权限控制', '组件化'],
-            obsidianFile: '03.火车票后台管理系统🖥️/行动2/02 动态菜单是怎么实现的？菜单数据从哪来？权限怎么控制？.md'
-          },
-          {
             id: 'p3-bff-5',
             title: '50+ 页面怎么快速开发的？',
             tags: ['脚手架', '页面模板', '快速开发', 'Ant Design'],
@@ -578,16 +572,6 @@ const QUICK_ANSWERS = {
 **vs API Routes：** 没有中间件机制，14 个接口都要重复写鉴权；Koa 一个 server.use() 全局生效。
 
 **架构：** bodyParser → loginMiddleWare → router.routes → Next.js handle，顺序明确。API 和页面共享中间件链，requireDirectory 自动注册路由。`,
-
-  'p3-bff-4': `**核心：** 前端 menu.tsx 定义完整结构，后端返回有权限的 key 列表（下划线拼接层级），前端匹配过滤。
-
-**流程：** 调权限接口 → 去重 → 匹配 menu.tsx → 按 weight 排序 → 渲染
-
-**四级权限：**
-1. 一级（markets）→ 模块可见
-2. 二级（markets_vouchers）→ 子菜单
-3. 三级（markets_vouchers_list）→ 页面可访问（否则重定向首页）
-4. 四级（markets_vouchers_list_goOnline）→ 按钮（operationAuthority.isShow()）`,
 
   'p3-bff-5': `**核心：** 没有脚手架，但三个统一让新模块只改业务字段。
 
