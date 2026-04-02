@@ -128,6 +128,11 @@ const PROJECT_QA_SECTIONS = [
             obsidianFile: '01.去哪儿旅行火车app🚂/行动2/04 "异步串行改并行"具体改了哪些场景？改并行后有没有遇到数据依赖的问题？怎么处理的？.md'
           },
           {
+            id: 'p1-perf-5',
+            title: '非可视组件延迟挂载是怎么做的？',
+            tags: ['渲染优化', '延迟挂载', '首帧渲染', 'shouldRenderComponent']
+          },
+          {
             id: 'p1-perf-6',
             title: '这个项目你怎么推动的？你的角色？',
             tags: ['项目管理', '跨团队协作', '角色定位'],
@@ -368,6 +373,19 @@ const QUICK_ANSWERS = {
 2. **列表页增强数据：** 首页选完条件就通过 TrainListFirstScreenPreSearch 预取，Promise 存入带 TTL 的 LRU Cache，进列表页直接读
 
 **getData 统一入口：** 缓存已有同步返回、Promise 在等就 await、未命中才发新请求`,
+
+  'p1-perf-5': `**核心：** 首帧只挂载用户可见的核心组件，弹窗/浮层等非可视组件延后到首屏渲染完成后再集中挂载。
+
+**机制：trainListFirstFrameFlag**
+1. 初始值 true → PageModalsAdapter.shouldRenderComponent 检测到 flag，**屏蔽 14 个弹窗组件挂载**
+2. 列表数据回来、首屏渲染完成后，afterPageInitShowCallback 里一次 dispatch 将 flag 设为 false
+3. 所有订阅该 state 的 Adapter 同步收到通知 → **14 个弹窗同一轮 commit 集中挂载**（而非分散触发 14 次渲染）
+
+**更细粒度：scheduleComponent**
+- 通过 InteractionManager.runAfterInteractions 等 Native 入场动画结束后再挂载
+- 避免 JS 线程和动画线程竞争，保证入场动画流畅
+
+**本质：** 把组件挂载的控制权从"数据就绪立刻挂"改为"首帧之后、动画之后再挂"，用一个 flag + 单次 dispatch 实现批量延迟`,
 
   'p1-perf-6': `**角色：** 核心执行者，独立负责前端性能专项，方案自己设计。
 
