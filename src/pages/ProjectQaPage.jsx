@@ -151,8 +151,8 @@ const PROJECT_QA_SECTIONS = [
           },
           {
             id: 'p1-ext-2',
-            title: 'React 批量更新机制，17 vs 18？',
-            tags: ['React', '批量更新', 'React 18', 'Concurrent'],
+            title: 'React 批量更新机制，17 vs 18？项目怎么做的？',
+            tags: ['React', '批量更新', 'React 18', 'Concurrent', '首帧优化'],
             obsidianFile: '01.去哪儿旅行火车app🚂/行动2/11 你提到"批量更新"来优化首帧渲染，React 的批量更新机制是怎么工作的？React 17 和 React 18 有什么区别？在 RN 中表现一样吗？.md'
           },
           {
@@ -399,13 +399,13 @@ const QUICK_ANSWERS = {
 
   'p1-ext-1': `**核心：** useMemo = 跳过昂贵计算 + 保持引用稳定。两者缺其一慎用。
 
-**原理：** 依赖数组 Object.is 浅比较，没变返回缓存值，存在 Fiber memoizedState 上。
-
 **项目场景：**
-- 骨架屏：空依赖固定引用，父组件 re-render 跳过子树 diff
-- 日历栏：精确依赖 foldHeader/calendarBarData，隔离滚动产生的无关 state 变化
+- 场景一：骨架屏，空依赖，整个生命周期只创建一次**
+- 日历栏：精确依赖 foldHeader/calendarBarData，隔离滚动产生的无关 state 变化。列表页有滚动联动逻辑，用户滚动时会频繁触发 \`onScroll\`，更新各种滚动偏移量的 state。日历栏只跟 \`foldHeader\`（是否折叠）和 \`calendarBarData\` 有关，用 \`useMemo\` 把它隔离出来，滚动产生的无关 state 变化不会重建这段子树，保护了首帧和滚动时的渲染性能。
 
-**该用：** 计算有开销、高频 re-render、返回值传 memo 子组件
+**该用：** 计算有开销、高频 re-render、返回值传 memo 子组件。父组件频繁更新，但子树的输入没变，用 \`useMemo\` 稳住 JSX 引用，让 React 跳过 diff
+ /
+ 
 **不该用：** O(1) 简单计算、组件很少 re-render、依赖每次都变`,
 
   'p1-ext-2': `**核心：** 批量更新 = 多次 setState 合并一次 re-render，本质是控制渲染时机。
@@ -414,9 +414,16 @@ const QUICK_ANSWERS = {
 - **17：** 只在合成事件/生命周期自动批量。setTimeout/Promise 不行，需 unstable_batchedUpdates
 - **18：** Automatic Batching 所有上下文自动合并，不想合并用 flushSync
 
-**项目实践（React 16/17）：**
-- trainListFirstFrameFlag=true → 首帧屏蔽 14 个弹窗（shouldRenderComponent 返回 false）
-- 数据就绪后一次 dispatch → flag=false → 14 个弹窗同一轮 commit 集中挂载`,
+**项目怎么做的（React 16/17，需主动设计）：**
+
+核心设计：\`trainListFirstFrameFlag\` 状态位
+1. 初始值 true → \`PageModalsAdapter.shouldRenderComponent\` 检测到 flag → **屏蔽 14 个弹窗组件挂载**
+2. 列表数据回来、首屏渲染完成后，\`afterPageInitShowCallback\` 里调用一次 Redux dispatch：\`updateTrainCityListStatus({ trainListFirstFrameFlag: false })\`
+3. 所有订阅该 state 的 Adapter 同步收到通知 → 统一执行 \`shouldRenderComponent\` 重判断 → **14 个弹窗同一轮 commit 集中挂载**
+
+**本质：** 一次 dispatch 驱动多个组件集中挂载，把分散的挂载开销攒到首帧之后一次性释放
+
+**更细粒度：** \`scheduleComponent\` 通过 \`InteractionManager.runAfterInteractions\` 等 Native 动画结束后再挂载，避免 JS 线程和动画线程竞争`,
 
   'p1-ext-3': `**核心：** 不是并行是并发。JS 单线程，网络 I/O 由 OS/Native 层处理不占 JS 线程。
 
