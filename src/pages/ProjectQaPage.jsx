@@ -553,15 +553,19 @@ const QUICK_ANSWERS = {
 **统计来源：** 飞书服务台后台自动区分，无需自己埋点
 **年化收益：** 6150 工单 × 31% ÷ 3.33个/天 ≈ 572 人天 - 61 投入 → ~102 万元`,
 
-  'p3-bff-1': `**一句话：** BFF = 前端专属中间层，前端只跟 BFF 打交道。
+  'p3-bff-1': `**一句话：** BFF = 前端专属中间层（Koa + Next.js 同进程），前端所有请求统一发到 BFF，BFF 负责鉴权拦截、路由转发、响应格式化。
 
-**解决四个问题：**
-1. **鉴权统一：** login.middleware 拦截所有 /api/*，cookie 透传，后端无感
-2. **环境解耦：** PM2 ecosystem 注入环境变量，前端零改动
-3. **接口收口：** 通用代理端点 + _path 参数，BFF 路由到微服务
-4. **SSR 适配：** 服务端手动取 cookie 透传
+**一、鉴权统一**
 
-**vs Gateway：** Gateway 是后端大门（限流/熔断），BFF 是前端管家（数据裁剪/SSR）`,
+不用 BFF：前端直接调多个微服务，每个服务都要单独处理鉴权，逻辑分散。
+
+用 BFF：\`login.middleware.js\` 拦截所有 \`/api/*\` 请求，检查 username cookie，未登录直接 401。登录走 \`/api/login\` 通过企业 SSO 验证 token，成功后统一种 cookie。后续所有请求 BFF 自动把 cookie 透传给后端微服务（\`ctx.request.headers.cookie\`）。后端微服务完全不需要各自处理登录态。
+
+**二、多环境切换**
+
+不用 BFF：前端要维护多套微服务地址（至少两组：\`NEXT_PUBLIC_HOST\` 和 \`NEXT_PUBLIC_HOST_SERVICE\`，dev/beta/prod 各不同），不同接口还要知道该调哪个服务，耦合严重。
+
+用 BFF：通过 PM2 ecosystem 配置文件（\`ecosystem.dev.config.js\` / beta / prod）注入环境变量。\`server/utils/fetch.js\` 中通过 URL 路径匹配（30+ 条规则）自动路由到正确的微服务。前端只需要知道 BFF 地址，环境切换只改 BFF 配置，前端代码零改动。`,
 
   'p3-bff-2': `**核心问题：** 浏览器自动带 cookie，Node.js（getServerSideProps）不会 → BFF 收到"裸请求"→ 401。
 
